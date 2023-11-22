@@ -13,7 +13,7 @@ from mage_ai.shared.array import find
 
 class ComputeConnectionResource(GenericResource):
     @classmethod
-    async def collection(self, query_arg, _meta, user, **kwargs):
+    async def collection(cls, query_arg, _meta, user, **kwargs):
         parent_model = kwargs.get('parent_model')
 
         arr = []
@@ -22,14 +22,10 @@ class ComputeConnectionResource(GenericResource):
             if ComputeServiceUUID.AWS_EMR == parent_model.uuid:
                 arr.extend(parent_model.compute_connections())
 
-        return self.build_result_set(
-            arr,
-            user,
-            **kwargs,
-        )
+        return cls.build_result_set(arr, user, **kwargs)
 
     @classmethod
-    async def member(self, pk, user, **kwargs):
+    async def member(cls, pk, user, **kwargs):
         parent_model = kwargs.get('parent_model')
 
         model = ComputeConnection.load(name=pk, uuid=pk)
@@ -37,7 +33,7 @@ class ComputeConnectionResource(GenericResource):
             if ComputeServiceUUID.AWS_EMR == parent_model.uuid:
                 model = find(lambda x: x.uuid == pk, parent_model.compute_connections())
 
-        return self(model, user, **kwargs)
+        return cls(model, user, **kwargs)
 
     async def update(self, payload, **kwargs):
         parent_model = kwargs.get('parent_model')

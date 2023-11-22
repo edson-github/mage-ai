@@ -46,7 +46,7 @@ class PipelineSchedulePresenter(BasePresenter):
             data['next_pipeline_run_date'] = next_execution_date
 
             return data
-        elif 'with_runtime_average' == display_format:
+        elif display_format == 'with_runtime_average':
             data['runtime_average'] = self.model.runtime_average()
             data['tags'] = sorted([tag.name for tag in self.get_tag_associations])
             data['next_pipeline_run_date'] = next_execution_date

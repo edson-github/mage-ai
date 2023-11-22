@@ -38,7 +38,7 @@ class InteractionResource(GenericResource):
 
     @classmethod
     @safe_db_query
-    async def create(self, payload, user, **kwargs):
+    async def create(cls, payload, user, **kwargs):
         pipeline_interaction = kwargs.get('parent_model')
         uuid = clean_name(payload.get('uuid') or '', allow_characters=[
             '.',
@@ -74,11 +74,11 @@ class InteractionResource(GenericResource):
                 interaction,
             )
 
-        return self(interaction, user, **kwargs)
+        return cls(interaction, user, **kwargs)
 
     @classmethod
     @safe_db_query
-    def member(self, pk, user, **kwargs):
+    def member(cls, pk, user, **kwargs):
         uuid = urllib.parse.unquote(pk)
         pipeline = kwargs.get('parent_model')
         model = Interaction(uuid, pipeline=pipeline)
@@ -88,7 +88,7 @@ class InteractionResource(GenericResource):
             error['message'] = f'Interaction {uuid} doesn’t exist.'
             raise ApiError(error)
 
-        return self(model, user, **kwargs)
+        return cls(model, user, **kwargs)
 
     def delete(self, **kwargs):
         self.model.delete()

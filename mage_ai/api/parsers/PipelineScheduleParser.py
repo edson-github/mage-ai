@@ -50,12 +50,12 @@ async def parse_write(
 
         if pipeline_interaction:
             variables = parsed_value.get('variables')
-            if pipeline_interaction and variables:
-                variables_allowed = await pipeline_interaction.variables()
-                parsed_value['variables'] = extract(
-                    variables or {},
-                    (variables_allowed or {}).keys(),
-                )
+        if pipeline_interaction and variables:
+            variables_allowed = await pipeline_interaction.variables()
+            parsed_value['variables'] = extract(
+                variables or {},
+                (variables_allowed or {}).keys(),
+            )
 
     return parsed_value
 

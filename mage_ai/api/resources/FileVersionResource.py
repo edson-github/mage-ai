@@ -9,7 +9,7 @@ from mage_ai.orchestration.db import safe_db_query
 class FileVersionResource(GenericResource):
     @classmethod
     @safe_db_query
-    def collection(self, query, meta, user, **kwargs):
+    def collection(cls, query, meta, user, **kwargs):
         parent_model = kwargs.get('parent_model')
 
         pipeline_uuid = query.get('pipeline_uuid', [False])
@@ -21,19 +21,13 @@ class FileVersionResource(GenericResource):
             block_uuid = block_uuid[0]
 
         if pipeline_uuid and block_uuid:
-            pipeline = Pipeline.get(pipeline_uuid)
-            if pipeline:
-                block = pipeline.get_block(block_uuid)
-                if block:
+            if pipeline := Pipeline.get(pipeline_uuid):
+                if block := pipeline.get_block(block_uuid):
                     parent_model = block.file
 
         if isinstance(parent_model, Block):
             pass
         elif isinstance(parent_model, File):
-            return self.build_result_set(
-                parent_model.file_versions(),
-                user,
-                **kwargs,
-            )
+            return cls.build_result_set(parent_model.file_versions(), user, **kwargs)
         else:
             raise ApiError(ApiError.RESOURCE_INVALID.copy())

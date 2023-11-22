@@ -26,13 +26,12 @@ def filter_results(result: Dict) -> bool:
     if OBJECT_TYPE_BLOCK_FILE == object_type:
         block_type = block_action_object.get('type')
         language = block_action_object.get('language')
-    elif OBJECT_TYPE_CUSTOM_BLOCK_TEMPLATE == object_type:
+    elif (
+        OBJECT_TYPE_CUSTOM_BLOCK_TEMPLATE == object_type
+        or OBJECT_TYPE_MAGE_TEMPLATE == object_type
+    ):
         block_type = block_action_object.get('block_type')
         language = block_action_object.get('language')
-    elif OBJECT_TYPE_MAGE_TEMPLATE == object_type:
-        block_type = block_action_object.get('block_type')
-        language = block_action_object.get('language')
-
     if BlockLanguage.YAML == language and \
             BlockType.DBT != block_type and \
             not Project().is_feature_enabled(
@@ -41,20 +40,17 @@ def filter_results(result: Dict) -> bool:
 
         return False
 
-    if block_type in [
+    return block_type not in [
         BlockType.CALLBACK,
         BlockType.CHART,
         BlockType.CONDITIONAL,
         BlockType.EXTENSION,
-    ]:
-        return False
-
-    return True
+    ]
 
 
 class SearchResultResource(GenericResource):
     @classmethod
-    async def create(self, payload: Dict, user, **kwargs):
+    async def create(cls, payload: Dict, user, **kwargs):
         pipeline_type = payload.get('pipeline_type', None)
         query = payload.get('query', None)
         ratio = payload.get('ratio', None)
@@ -74,8 +70,12 @@ class SearchResultResource(GenericResource):
 
                 results = results[:12]
 
-        return self(dict(
-            results=results,
-            type=search_type,
-            uuid=query,
-        ), user, **kwargs)
+        return cls(
+            dict(
+                results=results,
+                type=search_type,
+                uuid=query,
+            ),
+            user,
+            **kwargs
+        )

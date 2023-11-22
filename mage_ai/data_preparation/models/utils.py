@@ -10,19 +10,10 @@ import yaml
 from mage_ai.shared.parsers import encode_complex
 
 MAX_PARTITION_BYTE_SIZE = 100 * 1024 * 1024
-JSON_SERIALIZABLE_COLUMN_TYPES = set([
-    dict.__name__,
-    list.__name__,
-])
-STRING_SERIALIZABLE_COLUMN_TYPES = set([
-    'ObjectId',
-])
+JSON_SERIALIZABLE_COLUMN_TYPES = {dict.__name__, list.__name__}
+STRING_SERIALIZABLE_COLUMN_TYPES = {'ObjectId'}
 
-CAST_TYPE_COLUMN_TYPES = set([
-    'Int64',
-    'int64',
-    'float64',
-])
+CAST_TYPE_COLUMN_TYPES = {'Int64', 'int64', 'float64'}
 
 
 def serialize_columns(row: pd.Series, column_types: Dict) -> pd.Series:
@@ -88,20 +79,20 @@ def apply_transform_pandas(df: pd.DataFrame, apply_function) -> pd.DataFrame:
 def should_serialize_pandas(column_types: Dict) -> bool:
     if not column_types:
         return False
-    for _, column_type in column_types.items():
-        if column_type in JSON_SERIALIZABLE_COLUMN_TYPES or \
-                column_type in STRING_SERIALIZABLE_COLUMN_TYPES:
-            return True
-    return False
+    return any(
+        column_type in JSON_SERIALIZABLE_COLUMN_TYPES
+        or column_type in STRING_SERIALIZABLE_COLUMN_TYPES
+        for _, column_type in column_types.items()
+    )
 
 
 def should_deserialize_pandas(column_types: Dict) -> bool:
     if not column_types:
         return False
-    for _, column_type in column_types.items():
-        if column_type in JSON_SERIALIZABLE_COLUMN_TYPES:
-            return True
-    return False
+    return any(
+        column_type in JSON_SERIALIZABLE_COLUMN_TYPES
+        for _, column_type in column_types.items()
+    )
 
 
 def is_yaml_serializable(key: str, value: Any) -> bool:

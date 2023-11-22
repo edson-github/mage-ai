@@ -12,8 +12,8 @@ class BlockCache(BaseCache):
     cache_key = CACHE_KEY_BLOCKS_TO_PIPELINE_MAPPING
 
     @classmethod
-    async def initialize_cache(self, replace: bool = False) -> 'BlockCache':
-        cache = self()
+    async def initialize_cache(cls, replace: bool = False) -> 'BlockCache':
+        cache = cls()
         if replace or not cache.exists():
             await cache.initialize_cache_for_all_pipelines()
 
@@ -47,8 +47,7 @@ class BlockCache(BaseCache):
 
         mapping = self.get(self.cache_key)
         if mapping is not None:
-            key = self.build_key(block)
-            if key:
+            if key := self.build_key(block):
                 pipelines_dict = mapping.get(key, {})
 
         return pipelines_dict

@@ -21,7 +21,7 @@ class FolderResource(GenericResource):
     def create(cls, payload: Dict, user, **kwargs) -> 'FolderResource':
         path = full_path(payload.get('path'), payload.get('name'))
         cls.check_folder_is_in_project(path)
-        os.makedirs(path, exist_ok=True if payload.get('overwrite', False) else False)
+        os.makedirs(path, exist_ok=bool(payload.get('overwrite', False)))
         return cls(dict(path=path), user, **kwargs)
 
     @classmethod

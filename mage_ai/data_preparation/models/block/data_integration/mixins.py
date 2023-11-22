@@ -59,13 +59,11 @@ class DataIntegrationMixin:
         Returns:
             List[str]: List of UUIDs.
         """
-        arr = []
-
-        for stream_id, settings in self.data_integration_inputs.items():
-            if settings.get('input_only'):
-                arr.append(stream_id)
-
-        return arr
+        return [
+            stream_id
+            for stream_id, settings in self.data_integration_inputs.items()
+            if settings.get('input_only')
+        ]
 
     @property
     def data_integration_inputs(self) -> Dict:
@@ -95,13 +93,11 @@ class DataIntegrationMixin:
         Returns:
             List[str]: List of UUIDs.
         """
-        arr = []
-
-        for stream_id, settings in self.data_integration_inputs.items():
-            if settings.get('streams'):
-                arr.append(stream_id)
-
-        return arr
+        return [
+            stream_id
+            for stream_id, settings in self.data_integration_inputs.items()
+            if settings.get('streams')
+        ]
 
     @property
     def upstream_block_uuids_for_inputs(self) -> List[str]:
@@ -162,8 +158,7 @@ class DataIntegrationMixin:
 
         if os.path.exists(catalog_full_path):
             with open(catalog_full_path, mode='r') as f:
-                t = f.read()
-                if t:
+                if t := f.read():
                     try:
                         return json.loads(t)
                     except json.decoder.JSONDecodeError:

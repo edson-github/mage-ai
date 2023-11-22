@@ -21,19 +21,12 @@ from mage_ai.shared.utils import clean_name
 class VariableManager:
     def __init__(self, repo_path=None, variables_dir=None):
         self.repo_path = repo_path or get_repo_path()
-        if variables_dir is None:
-            self.variables_dir = self.repo_path
-        else:
-            self.variables_dir = variables_dir
+        self.variables_dir = self.repo_path if variables_dir is None else variables_dir
         self.storage = LocalStorage()
         # TODO: implement caching logic
 
     @classmethod
-    def get_manager(
-        self,
-        repo_path: str = None,
-        variables_dir: str = None,
-    ) -> 'VariableManager':
+    def get_manager(cls, repo_path: str = None, variables_dir: str = None) -> 'VariableManager':
         manager_args = dict(
             repo_path=repo_path,
             variables_dir=variables_dir,

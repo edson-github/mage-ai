@@ -43,6 +43,7 @@ class ADProvider(SsoProvider, OauthProvider):
         ACTIVE_DIRECTORY_CLIENT_SECRET which will use their own Mage application in Azure.
         """
         ad_directory_id = ACTIVE_DIRECTORY_DIRECTORY_ID
+        query_strings = []
         if ACTIVE_DIRECTORY_CLIENT_ID:
             base_url = get_base_url(redirect_uri)
             redirect_uri_query = dict(
@@ -58,10 +59,7 @@ class ADProvider(SsoProvider, OauthProvider):
                 scope='User.Read',
                 state=uuid.uuid4().hex,
             )
-            query_strings = []
-            for k, v in query.items():
-                query_strings.append(f'{k}={v}')
-
+            query_strings.extend(f'{k}={v}' for k, v in query.items())
             return dict(
                 url=f"https://login.microsoftonline.com/{ad_directory_id}/oauth2/v2.0/authorize?{'&'.join(query_strings)}",  # noqa: E501
                 redirect_query_params=redirect_uri_query,
@@ -85,10 +83,7 @@ class ADProvider(SsoProvider, OauthProvider):
                     )
                 ),
             )
-            query_strings = []
-            for k, v in query.items():
-                query_strings.append(f'{k}={v}')
-
+            query_strings.extend(f'{k}={v}' for k, v in query.items())
             return dict(
                 url=f"https://login.microsoftonline.com/{ad_directory_id}/oauth2/v2.0/authorize?{'&'.join(query_strings)}",  # noqa: E501
             )

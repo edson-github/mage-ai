@@ -35,11 +35,7 @@ def build_buckets(min_value, max_value, max_buckets, column_type):
 
     is_integer = False
     parts = str(diff).split('.')
-    if len(parts) == 1:
-        is_integer = True
-    else:
-        is_integer = int(parts[1]) == 0
-
+    is_integer = True if len(parts) == 1 else int(parts[1]) == 0
     if ColumnType.NUMBER == column_type and total_interval <= max_buckets and is_integer:
         number_of_buckets = int(total_interval)
         bucket_interval = 1
@@ -184,10 +180,7 @@ def build_time_series_data(df, features, datetime_column):
             )
 
             if column_type in [ColumnType.NUMBER, ColumnType.NUMBER_WITH_DECIMALS]:
-                if len(series_non_null) == 0:
-                    average = 0
-                else:
-                    average = series_non_null.mean()
+                average = 0 if len(series_non_null) == 0 else series_non_null.mean()
                 y_data.update(
                     dict(
                         average=average,

@@ -35,8 +35,7 @@ class BaseCache():
         return self.get(self.cache_key) is not None
 
     def get(self, key: str) -> Union[Dict, List]:
-        value_fetched = self.storage.read_json_file(self.__build_path(key), None)
-        return value_fetched
+        return self.storage.read_json_file(self.__build_path(key), None)
 
     def load_all_data(self):
         return self.get(self.cache_key)

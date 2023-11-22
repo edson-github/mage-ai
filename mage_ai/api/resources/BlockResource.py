@@ -103,7 +103,7 @@ class BlockResource(GenericResource):
 
                         block_dict[key] = uuids
 
-                    if len(group_parts) >= 1:
+                    if group_parts:
                         block_dict['tags'] = [group_parts[0]]
 
                     if len(group_parts) >= 2:
@@ -179,7 +179,7 @@ class BlockResource(GenericResource):
                                     sources_destinations_by_block_uuid[b_uuid] = []
 
                                 if source_destination not in \
-                                        sources_destinations_by_block_uuid[b_uuid]:
+                                            sources_destinations_by_block_uuid[b_uuid]:
 
                                     sources_destinations_by_block_uuid[b_uuid].append(
                                         source_destination,
@@ -228,7 +228,7 @@ class BlockResource(GenericResource):
                                 ] = data
                             elif controller_block_uuid:
                                 if controller_block_uuid not in \
-                                        data_integration_sets_by_uuid[original_block_uuid][
+                                            data_integration_sets_by_uuid[original_block_uuid][
                                             'children'
                                         ]:
                                     data_integration_sets_by_uuid[original_block_uuid][
@@ -308,7 +308,7 @@ class BlockResource(GenericResource):
                         if block.replicated_block and not is_dynamic_block_child(block):
                             blocks_arr = block_dicts_by_uuid[block_uuid].get(key) or []
                             block_dicts_by_uuid[block_uuid][key] = \
-                                [uuid for uuid in blocks_arr if uuid != block_uuid_base]
+                                    [uuid for uuid in blocks_arr if uuid != block_uuid_base]
                             block_dicts_by_uuid[block_uuid][key].append(block.uuid_replicated)
 
             blocks_to_not_override = {}
@@ -372,7 +372,7 @@ class BlockResource(GenericResource):
                     children_end = children.get(controller_child_end_uuid) or []
 
                     block_dicts_by_uuid[original_block_uuid]['upstream_blocks'] = \
-                        [d['uuid'] for d in children_end]
+                            [d['uuid'] for d in children_end]
                     blocks_to_not_override[original_block_uuid] = True
 
                     downstream_blocks = block_dicts_by_uuid[original_block_uuid].get(
@@ -458,11 +458,11 @@ class BlockResource(GenericResource):
                     # remove the dynamic child block’s original UUID from
                     # the current block’s upstream blocks.
                     if ub_block and \
-                            is_dynamic_block_child(ub_block) and \
-                            ub_block.uuid in block_dicts_by_uuid[block_uuid]['upstream_blocks']:
+                                is_dynamic_block_child(ub_block) and \
+                                ub_block.uuid in block_dicts_by_uuid[block_uuid]['upstream_blocks']:
 
                         block_dicts_by_uuid[block_uuid]['upstream_blocks'] = \
-                            [uuid for uuid in
+                                [uuid for uuid in
                                 block_dicts_by_uuid[block_uuid]['upstream_blocks']
                                 if uuid != ub_block.uuid]
 
@@ -472,7 +472,7 @@ class BlockResource(GenericResource):
 
                     if block_uuid not in block_dicts_by_uuid[up_block_uuid]:
                         if block_uuid not in \
-                                block_dicts_by_uuid[up_block_uuid]['downstream_blocks']:
+                                    block_dicts_by_uuid[up_block_uuid]['downstream_blocks']:
 
                             block_dicts_by_uuid[up_block_uuid]['downstream_blocks'].append(
                                 block_uuid,
@@ -481,13 +481,13 @@ class BlockResource(GenericResource):
                     up_block = pipeline.get_block(up_block_uuid)
                     if up_block and is_dynamic_block(up_block):
                         for db_block_uuid in \
-                                block_dicts_by_uuid[up_block_uuid]['downstream_blocks']:
+                                    block_dicts_by_uuid[up_block_uuid]['downstream_blocks']:
 
                             db_block = pipeline.get_block(db_block_uuid)
                             # Remove the original block UUID
                             if db_block and is_dynamic_block_child(db_block):
                                 block_dicts_by_uuid[up_block_uuid]['downstream_blocks'] = \
-                                    [uuid for uuid in
+                                        [uuid for uuid in
                                         block_dicts_by_uuid[up_block_uuid]['downstream_blocks']
                                         if uuid != db_block.uuid]
 
@@ -515,7 +515,7 @@ class BlockResource(GenericResource):
                             if downstream_started_ats:
                                 started_at_e = max(downstream_started_ats)
                                 block_dicts_by_uuid[controller_uuid]['runtime'] = \
-                                    started_at_e.timestamp() - block_run.started_at.timestamp()
+                                        started_at_e.timestamp() - block_run.started_at.timestamp()
 
             dynamic_blocks_beyond_1 = {}
             for base_uuid, count in dynamic_block_count_by_base_uuid.items():
@@ -560,7 +560,7 @@ class BlockResource(GenericResource):
 
                                     arr = block_dicts_by_uuid[uuids_inner][key_to_remove_from]
                                     block_dicts_by_uuid[uuids_inner][key_to_remove_from] = \
-                                        [i for i in arr if i != uuid]
+                                            [i for i in arr if i != uuid]
 
                             block_dicts_by_uuid.pop(uuid, None)
 
@@ -572,7 +572,7 @@ class BlockResource(GenericResource):
 
     @classmethod
     @safe_db_query
-    async def create(self, payload, user, **kwargs):
+    async def create(cls, payload, user, **kwargs):
         pipeline = kwargs.get('parent_model')
 
         block_type = payload.get('type')
@@ -651,8 +651,7 @@ class BlockResource(GenericResource):
         )
 
         replicated_block = None
-        replicated_block_uuid = payload.get('replicated_block')
-        if replicated_block_uuid:
+        if replicated_block_uuid := payload.get('replicated_block'):
             replicated_block = pipeline.get_block(replicated_block_uuid)
             if replicated_block:
                 block_type = replicated_block.type
@@ -710,11 +709,11 @@ class BlockResource(GenericResource):
                 replicated_block=replicated_block,
             )
 
-        return self(block, user, **kwargs)
+        return cls(block, user, **kwargs)
 
     @classmethod
     @safe_db_query
-    def member(self, pk, user, **kwargs):
+    def member(cls, pk, user, **kwargs):
         error = ApiError.RESOURCE_INVALID.copy()
 
         query = kwargs.get('query', {})
@@ -727,19 +726,17 @@ class BlockResource(GenericResource):
         if block_type:
             block_type = block_type[0]
 
-        pipeline = kwargs.get('parent_model')
-        if pipeline:
+        if pipeline := kwargs.get('parent_model'):
             block = pipeline.get_block(pk, block_type=block_type, extension_uuid=extension_uuid)
             if block:
-                return self(block, user, **kwargs)
-            else:
-                if extension_uuid:
-                    message = f'Block {pk} does not exist in pipeline {pipeline.uuid} ' \
-                        f'for extension {extension_uuid}.'
-                else:
-                    message = f'Block {pk} does not exist in pipeline {pipeline.uuid}.'
-                error.update(message=message)
-                raise ApiError(error)
+                return cls(block, user, **kwargs)
+            message = (
+                f'Block {pk} does not exist in pipeline {pipeline.uuid} for extension {extension_uuid}.'
+                if extension_uuid
+                else f'Block {pk} does not exist in pipeline {pipeline.uuid}.'
+            )
+            error.update(message=message)
+            raise ApiError(error)
 
         block_type_and_uuid = urllib.parse.unquote(pk)
         parts = block_type_and_uuid.split('/')
@@ -782,7 +779,7 @@ class BlockResource(GenericResource):
             error.update(ApiError.RESOURCE_NOT_FOUND)
             raise ApiError(error)
 
-        return self(block, user, **kwargs)
+        return cls(block, user, **kwargs)
 
     @safe_db_query
     async def delete(self, **kwargs):

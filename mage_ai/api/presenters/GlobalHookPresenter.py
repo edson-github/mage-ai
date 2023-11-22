@@ -26,17 +26,14 @@ class GlobalHookPresenter(BasePresenter):
 
         data = {}
         if self.resource.model:
-            include_snapshot_validation = False
-            if 'include_snapshot_validation' in query:
-                include_snapshot_validation = True
-
+            include_snapshot_validation = 'include_snapshot_validation' in query
             data = self.resource.model.to_dict(
                 include_all=True,
                 include_snapshot_validation=include_snapshot_validation,
             )
 
         display_format = kwargs.get('format')
-        if 'with_pipeline_details' == display_format:
+        if display_format == 'with_pipeline_details':
             data['pipeline_details'] = await self.pipeline_details(**kwargs)
 
         if 'include_operation_types' in query:
@@ -49,11 +46,10 @@ class GlobalHookPresenter(BasePresenter):
 
     async def pipeline_details(self, **kwargs) -> Dict:
         if self.resource.model.pipeline_settings and \
-                self.resource.model.pipeline_settings.get('uuid'):
+                    self.resource.model.pipeline_settings.get('uuid'):
 
             pipeline = await self.resource.pipeline
-            pipeline_dict = await pipeline.to_dict_async()
-            return pipeline_dict
+            return await pipeline.to_dict_async()
 
 
 GlobalHookPresenter.register_format(

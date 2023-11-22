@@ -9,8 +9,7 @@ from mage_ai.orchestration.constants import Entity
 class LlmPolicy(BasePolicy):
     @property
     def entity(self):
-        parent_model = self.options.get('parent_model')
-        if parent_model:
+        if parent_model := self.options.get('parent_model'):
             if issubclass(parent_model.__class__, Pipeline):
                 return Entity.PIPELINE, parent_model.uuid
 

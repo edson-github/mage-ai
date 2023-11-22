@@ -13,12 +13,12 @@ class WorkspaceConfig(BaseConfig):
     project_uuid: str = None
 
     @classmethod
-    def parse_config(self, config: Dict = None) -> Dict:
+    def parse_config(cls, config: Dict = None) -> Dict:
         lifecycle_config = config.get('lifecycle_config')
         if lifecycle_config and type(lifecycle_config) is dict:
             config['lifecycle_config'] = LifecycleConfig.load(config=lifecycle_config)
 
-        all_fields = fields(self)
+        all_fields = fields(cls)
         keys = [field.name for field in all_fields]
         return extract(config, keys)
 
@@ -60,7 +60,7 @@ class PostStart(BaseConfig):
     hook_path: str = None
 
     @classmethod
-    def parse_config(self, config: Dict = None) -> Dict:
+    def parse_config(cls, config: Dict = None) -> Dict:
         hook_path = config.get('hook_path')
         if hook_path and not os.path.isabs(hook_path):
             config['hook_path'] = os.path.join(
@@ -77,7 +77,7 @@ class LifecycleConfig(BaseConfig):
     post_start: PostStart = None
 
     @classmethod
-    def parse_config(self, config: Dict = None) -> Dict:
+    def parse_config(cls, config: Dict = None) -> Dict:
         pre_start_script_path = config.get('pre_start_script_path')
         if pre_start_script_path and not os.path.isabs(pre_start_script_path):
             config['pre_start_script_path'] = os.path.join(

@@ -27,10 +27,8 @@ class WorkspacePresenter(BasePresenter):
     )
 
     async def present(self, **kwargs):
-        workspace = self.model.pop('workspace', None)
-        workspace_config = dict()
-        if workspace:
+        if workspace := self.model.pop('workspace', None):
             workspace_config = workspace.to_dict()
-        data = merge_dict(workspace_config, self.model)
-
-        return data
+        else:
+            workspace_config = dict()
+        return merge_dict(workspace_config, self.model)

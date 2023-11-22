@@ -45,8 +45,8 @@ class BlockPresenter(BasePresenter):
 
         if display_format in [constants.CREATE, constants.UPDATE]:
             include_block_catalog = self.model.pipeline and \
-                    PipelineType.PYTHON == self.model.pipeline and \
-                    Project(self.model.pipeline.repo_config).is_feature_enabled(
+                        PipelineType.PYTHON == self.model.pipeline and \
+                        Project(self.model.pipeline.repo_config).is_feature_enabled(
                         FeatureUUID.DATA_INTEGRATION_IN_BATCH_PIPELINE,
                     )
 
@@ -111,9 +111,9 @@ class BlockPresenter(BasePresenter):
                             print(f'[ERROR] Block.metadata_async: {err}')
 
                 if data_integration_uuid:
-                    option = get_templates(group_templates=True).get(data_integration_uuid)
-
-                    if option:
+                    if option := get_templates(group_templates=True).get(
+                        data_integration_uuid
+                    ):
                         if not data_integration_type:
                             if BlockType.DATA_LOADER == self.model.type:
                                 data_integration_type = DATA_INTEGRATION_TYPE_SOURCES
@@ -124,7 +124,7 @@ class BlockPresenter(BasePresenter):
                         if info and info.get('docs'):
                             data['documentation'] = info.get('docs')
 
-            if 'dbt' == display_format:
+            if display_format == 'dbt':
                 query_string = None
                 lineage = None
                 if self.model.language == BlockLanguage.SQL:
@@ -139,12 +139,10 @@ class BlockPresenter(BasePresenter):
                 ))
 
             return data
-        elif 'with_settings' == display_format:
-            data = dict(
+        elif display_format == 'with_settings':
+            return dict(
                 pipelines=await self.resource.get_pipelines_from_cache(),
             )
-
-            return data
         elif constants.LIST == display_format and isinstance(self.model, dict):
             return self.model
 

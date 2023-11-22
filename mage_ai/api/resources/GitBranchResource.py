@@ -23,84 +23,79 @@ def build_file_object(obj):
 
 class GitBranchResource(GenericResource):
     @classmethod
-    def get_git_manager(self, user, setup_repo: bool = True) -> Git:
+    def get_git_manager(cls, user, setup_repo: bool = True) -> Git:
         return Git.get_manager(setup_repo=setup_repo, user=user)
 
     @classmethod
-    def collection(self, query, meta, user, **kwargs):
+    def collection(cls, query, meta, user, **kwargs):
         arr = []
 
-        include_remote_branches = query.get('include_remote_branches', None)
-        if include_remote_branches:
+        if include_remote_branches := query.get('include_remote_branches', None):
             include_remote_branches = include_remote_branches[0]
 
-        repository = query.get('repository', None)
-        if repository:
+        if repository := query.get('repository', None):
             repository = repository[0]
 
-            access_token = api.get_access_token_for_user(user)
-            if access_token:
+            if access_token := api.get_access_token_for_user(user):
                 auth = Auth.Token(access_token.token)
                 g = Github(auth=auth)
                 repo = g.get_repo(repository)
                 branches = repo.get_branches()
 
-                for branch in branches:
-                    arr.append(dict(name=branch.name))
+                arr.extend(dict(name=branch.name) for branch in branches)
         else:
-            git_manager = self.get_git_manager(user=user)
+            git_manager = cls.get_git_manager(user=user)
             arr += [dict(name=branch) for branch in git_manager.branches]
 
-            if include_remote_branches:
-                pass
-
-        return self.build_result_set(
-            arr,
-            user,
-            **kwargs,
-        )
+        return cls.build_result_set(arr, user, **kwargs)
 
     @classmethod
-    def create(self, payload, user, **kwargs):
+    def create(cls, payload, user, **kwargs):
         branch = payload.get('name')
-        git_manager = self.get_git_manager(user=user)
+        git_manager = cls.get_git_manager(user=user)
         git_manager.switch_branch(branch)
 
-        return self(dict(name=git_manager.current_branch), user, **kwargs)
+        return cls(dict(name=git_manager.current_branch), user, **kwargs)
 
     @classmethod
-    async def member(self, pk, user, **kwargs):
+    async def member(cls, pk, user, **kwargs):
         preferences = get_preferences(user=user)
-        setup_repo = False
-        if preferences.is_git_integration_enabled():
-            setup_repo = True
-        git_manager = self.get_git_manager(user=user, setup_repo=setup_repo)
+        setup_repo = bool(preferences.is_git_integration_enabled())
+        git_manager = cls.get_git_manager(user=user, setup_repo=setup_repo)
 
         display_format = kwargs.get('meta', {}).get('_format')
-        if 'with_basic_details' == display_format:
-            return self(dict(
-                files={},
-                is_git_integration_enabled=preferences.is_git_integration_enabled(),
-                modified_files=[],
-                name=git_manager.current_branch,
-                staged_files=[],
-                sync_config=get_preferences().sync_config,
-                untracked_files=[],
-            ), user, **kwargs)
+        if display_format == 'with_basic_details':
+            return cls(
+                dict(
+                    files={},
+                    is_git_integration_enabled=preferences.is_git_integration_enabled(),
+                    modified_files=[],
+                    name=git_manager.current_branch,
+                    staged_files=[],
+                    sync_config=get_preferences().sync_config,
+                    untracked_files=[],
+                ),
+                user,
+                **kwargs
+            )
 
         modified_files = git_manager.modified_files
         staged_files = await git_manager.staged_files()
         untracked_files = await git_manager.untracked_files()
 
-        return self(dict(
-            files={},
-            is_git_integration_enabled=preferences.is_git_integration_enabled(),
-            modified_files=modified_files,
-            name=git_manager.current_branch,
-            staged_files=staged_files,
-            sync_config=get_preferences().sync_config,
-            untracked_files=untracked_files,
-        ), user, **kwargs)
+        return cls(
+            dict(
+                files={},
+                is_git_integration_enabled=preferences.is_git_integration_enabled(),
+                modified_files=modified_files,
+                name=git_manager.current_branch,
+                staged_files=staged_files,
+                sync_config=get_preferences().sync_config,
+                untracked_files=untracked_files,
+            ),
+            user,
+            **kwargs
+        )
 
     async def update(self, payload, **kwargs):
         git_manager = self.get_git_manager(user=self.current_user)
@@ -160,7 +155,7 @@ class GitBranchResource(GenericResource):
                             self.model['progress'] = lines
                     else:
                         self.model['error'] = \
-                            'Please authenticate with GitHub before trying to push.'
+                                'Please authenticate with GitHub before trying to push.'
                 except GitCommandError as err:
                     self.model['error'] = str(err)
             else:
@@ -198,7 +193,7 @@ class GitBranchResource(GenericResource):
                             self.model['progress'] = lines
                     else:
                         self.model['error'] = \
-                            'Please authenticate with GitHub before trying to pull.'
+                                'Please authenticate with GitHub before trying to pull.'
                 except GitCommandError as err:
                     self.model['error'] = str(err)
             else:
@@ -226,7 +221,7 @@ class GitBranchResource(GenericResource):
                             self.model['progress'] = lines
                     else:
                         self.model['error'] = \
-                            'Please authenticate with GitHub before trying to fetch.'
+                                'Please authenticate with GitHub before trying to fetch.'
                 except GitCommandError as err:
                     self.model['error'] = str(err)
             else:
@@ -254,7 +249,7 @@ class GitBranchResource(GenericResource):
                             )
                         else:
                             self.model['error'] = \
-                                'Please authenticate with GitHub before trying to pull.'
+                                    'Please authenticate with GitHub before trying to pull.'
                     except GitCommandError as err:
                         self.model['error'] = str(err)
         elif action_type == 'clone':
@@ -273,7 +268,7 @@ class GitBranchResource(GenericResource):
                         )
                     else:
                         self.model['error'] = \
-                            'Please authenticate with GitHub before trying to pull.'
+                                'Please authenticate with GitHub before trying to pull.'
                 except GitCommandError as err:
                     self.model['error'] = str(err)
             else:
@@ -292,12 +287,12 @@ class GitBranchResource(GenericResource):
                 })
                 raise ApiError(error)
 
-            args = []
             keys = ['name']
 
             if action_type == 'add_remote':
                 keys.append('url')
 
+            args = []
             for key in keys:
                 val = remote.get(key)
                 if not val:
@@ -311,10 +306,11 @@ class GitBranchResource(GenericResource):
             if action_type == 'add_remote':
                 if remote.get('name') == REMOTE_NAME:
                     error = ApiError.RESOURCE_ERROR
-                    error.update({
-                        'message': f'Remote name {REMOTE_NAME} is reserved, ' +
-                        'please select a different name.',
-                    })
+                    error.update(
+                        {
+                            'message': f'Remote name {REMOTE_NAME} is reserved, please select a different name.'
+                        }
+                    )
                     raise ApiError(error)
                 git_manager.add_remote(*args)
             elif action_type == 'remove_remote':
@@ -325,17 +321,17 @@ class GitBranchResource(GenericResource):
             'rebase',
         ]:
             data = payload.get('delete', None) or \
-                payload.get('merge', None) or \
-                payload.get('rebase', None)
+                    payload.get('merge', None) or \
+                    payload.get('rebase', None)
 
             if data and 'base_branch' in data:
                 base_branch = data['base_branch']
 
-                if 'delete' == action_type:
+                if action_type == 'delete':
                     git_manager.delete_branch(base_branch)
-                elif 'merge' == action_type:
+                elif action_type == 'merge':
                     git_manager.merge_branch(base_branch, message=message)
-                elif 'rebase' == action_type:
+                elif action_type == 'rebase':
                     git_manager.rebase_branch(base_branch, message=message)
             else:
                 error = ApiError.RESOURCE_ERROR
@@ -386,13 +382,10 @@ class GitBranchResource(GenericResource):
 
             obj_final = None
             for idx, obj in enumerate(reversed(arr)):
-                if idx == 0:
-                    obj_final = obj
-                else:
+                if idx != 0:
                     part = parts[number_of_parts - idx]
                     obj[part] = obj_final
-                    obj_final = obj
-
+                obj_final = obj
             files[parts[0]] = obj_final
 
         return build_file_object(files)

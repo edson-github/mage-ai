@@ -76,7 +76,7 @@ class OperationHistoryReader:
         timestamp: int = None,
         user: str = None,
     ) -> OperationHistory:
-        model = OperationHistory(
+        return OperationHistory(
             operation=operation,
             resource=dict(
                 type=resource_type,
@@ -85,8 +85,6 @@ class OperationHistoryReader:
             timestamp=timestamp or int(datetime.utcnow().timestamp()),
             user=user,
         )
-
-        return model
 
     def build_file_path(self, timestamp: int = None) -> str:
         dir_path = os.getenv(
@@ -139,7 +137,7 @@ class OperationHistoryReader:
 
         dates = []
         current_date = date_start
-        while current_date < date_end or len(dates) == 0:
+        while current_date < date_end or not dates:
             dates.append(current_date)
             current_date += timedelta(hours=24)
 

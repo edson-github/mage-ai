@@ -28,12 +28,10 @@ class AsyncBaseResource(BaseResource):
             loader = self.__class__.collective_loader().get(name, None)
             if loader:
                 arr = await self.collective_load_for_attribute(name)
-                if loader['select']:
-                    val = await loader['select'](self, arr)
-                else:
-                    val = arr
+                val = await loader['select'](self, arr) if loader['select'] else arr
             else:
                 val = getattr(self.model, name)
 
             return val
+
         return await _missing()

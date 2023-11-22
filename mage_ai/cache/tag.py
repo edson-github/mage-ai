@@ -15,8 +15,8 @@ class TagCache(BaseCache):
     cache_key = CACHE_KEY_TAGS_TO_OBJECT_MAPPING
 
     @classmethod
-    async def initialize_cache(self, replace: bool = False) -> 'TagCache':
-        cache = self()
+    async def initialize_cache(cls, replace: bool = False) -> 'TagCache':
+        cache = cls()
         if replace or not cache.exists():
             await cache.initialize_cache_for_all_objects()
 
@@ -30,8 +30,9 @@ class TagCache(BaseCache):
         pipeline_uuids = set()
 
         for tag_uuid in tags:
-            pipelines_dict = tags_mapping.get(tag_uuid, {}).get(KEY_FOR_PIPELINES, {})
-            if pipelines_dict:
+            if pipelines_dict := tags_mapping.get(tag_uuid, {}).get(
+                KEY_FOR_PIPELINES, {}
+            ):
                 pipeline_uuids.update(pipelines_dict.keys())
 
         return list(pipeline_uuids)
@@ -41,8 +42,7 @@ class TagCache(BaseCache):
         pipeline_uuids = set()
 
         for tag in tags_mapping.values():
-            pipelines_dict = tag.get(KEY_FOR_PIPELINES, {})
-            if pipelines_dict:
+            if pipelines_dict := tag.get(KEY_FOR_PIPELINES, {}):
                 pipeline_uuids.update(pipelines_dict.keys())
 
         return list(pipeline_uuids)

@@ -19,8 +19,8 @@ CONTEXT_DATA_KEY_USER_PERMISSIONS_GRANTED_KEY_ATTRIBUTE_OPERATIONS = '__attribut
 
 class ResultSetMixIn:
     @classmethod
-    def entity_name_uuid(self) -> EntityName:
-        model_name = self.model_name()
+    def entity_name_uuid(cls) -> EntityName:
+        model_name = cls.model_name()
         if model_name in EntityName._value2member_map_:
             return EntityName(model_name)
 
@@ -107,22 +107,23 @@ class ResultSetMixIn:
         if operation not in permissions_granted[key][entity_name]:
             return authorized
 
-        if attribute_operation_type and resource_attribute:
-            if attribute_operation_type not in permissions_granted[key][entity_name][operation]:
-                return authorized
+        if not attribute_operation_type or not resource_attribute:
+            return permissions_granted[key][entity_name][operation] or False
 
-            if resource_attribute not in \
-                    permissions_granted[key][entity_name][operation][attribute_operation_type]:
+        if attribute_operation_type not in permissions_granted[key][entity_name][operation]:
+            return authorized
 
-                return authorized
-
-            authorized = permissions_granted[key][entity_name][operation][attribute_operation_type][
-                resource_attribute
-            ] or False
-        else:
-            authorized = permissions_granted[key][entity_name][operation] or False
-
-        return authorized
+        return (
+            authorized
+            if resource_attribute
+            not in permissions_granted[key][entity_name][operation][
+                attribute_operation_type
+            ]
+            else permissions_granted[key][entity_name][operation][
+                attribute_operation_type
+            ][resource_attribute]
+            or False
+        )
 
     async def cache_permission_authorization(
         self,

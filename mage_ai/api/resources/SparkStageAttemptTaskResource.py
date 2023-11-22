@@ -5,7 +5,7 @@ from mage_ai.api.resources.mixins.spark import SparkApplicationChild
 
 class SparkStageAttemptTaskResource(GenericResource, SparkApplicationChild):
     @classmethod
-    async def collection(self, query, _meta, user, **kwargs):
+    async def collection(cls, query, _meta, user, **kwargs):
         attempt_id = query.get('attempt_id', [None])
         if attempt_id is not None:
             attempt_id = attempt_id[0]
@@ -16,11 +16,10 @@ class SparkStageAttemptTaskResource(GenericResource, SparkApplicationChild):
             error.message = 'Stage not found.'
             raise error
 
-        return self.build_result_set(
-            await self.build_api().stage_attempt_tasks(
-                attempt_id=attempt_id,
-                stage_id=parent_model.id,
+        return cls.build_result_set(
+            await cls.build_api().stage_attempt_tasks(
+                attempt_id=attempt_id, stage_id=parent_model.id
             ),
             user,
-            **kwargs,
+            **kwargs
         )

@@ -112,9 +112,7 @@ class OpenAIClient(AIClient):
         return await chain.arun(variable_values)
 
     def __parse_argument_value(self, value: str) -> str:
-        if value is None:
-            return None
-        return value.lower().split('__')[1]
+        return None if value is None else value.lower().split('__')[1]
 
     def __load_template_params(self, function_args: json):
         block_type = BlockType(self.__parse_argument_value(function_args[BlockType.__name__]))
@@ -126,9 +124,11 @@ class OpenAIClient(AIClient):
                             self.__parse_argument_value(
                                 function_args.get(PipelineType.__name__)
                             ) or "python")
-        config = {}
-        config['action_type'] = self.__parse_argument_value(
-                                    function_args.get(ActionType.__name__))
+        config = {
+            'action_type': self.__parse_argument_value(
+                function_args.get(ActionType.__name__)
+            )
+        }
         if config['action_type']:
             if config['action_type'] in [
                 ActionType.FILTER,
@@ -158,11 +158,11 @@ class OpenAIClient(AIClient):
             function_args = json.loads(response_message['function_call']['arguments'])
             block_type, block_language, pipeline_type, config = self.__load_template_params(
                 function_args)
-            output = {}
-            output['block_type'] = block_type
-            output['block_language'] = block_language
-            output['pipeline_type'] = pipeline_type
-            output['config'] = config
-            return output
+            return {
+                'block_type': block_type,
+                'block_language': block_language,
+                'pipeline_type': pipeline_type,
+                'config': config,
+            }
         else:
             raise Exception('Failed to interpret the description as a block template.')

@@ -17,22 +17,15 @@ from mage_ai.orchestration.db.models.schedules import BlockRun
 class OutputResource(GenericResource):
     @classmethod
     @safe_db_query
-    def collection(self, query, meta, user, **kwargs):
+    def collection(cls, query, meta, user, **kwargs):
         parent_model = kwargs['parent_model']
 
-        outputs = []
-        if type(parent_model) is BlockRun:
-            outputs = parent_model.get_outputs()
-
-        return self.build_result_set(
-            outputs,
-            user,
-            **kwargs,
-        )
+        outputs = parent_model.get_outputs() if type(parent_model) is BlockRun else []
+        return cls.build_result_set(outputs, user, **kwargs)
 
     @classmethod
     @safe_db_query
-    def create(self, payload: Dict, user, **kwargs) -> 'OutputResource':
+    def create(cls, payload: Dict, user, **kwargs) -> 'OutputResource':
         block_uuid = payload.get('block_uuid')
         pipeline_uuid = payload.get('pipeline_uuid')
         partition = payload.get('partition')
@@ -58,15 +51,13 @@ class OutputResource(GenericResource):
                     for stream in streams:
                         parent_stream = stream.get('parent_stream')
                         stream_id = stream.get('stream')
-                        # This data is already serialized
-                        outputs = read_data_from_cache(
+                        if outputs := read_data_from_cache(
                             block,
                             stream_id,
                             parent_stream=parent_stream,
                             partition=partition,
                             sample_count=sample_count,
-                        )
-                        if outputs:
+                        ):
                             outputs_by_stream[stream_id] = outputs[0]
                             outputs_by_stream_serialized[stream_id] = outputs[0]
 
@@ -110,11 +101,11 @@ class OutputResource(GenericResource):
                                 output,
                                 partition=partition,
                             )
-        return self(model, user, **kwargs)
+        return cls(model, user, **kwargs)
 
     @classmethod
     @safe_db_query
-    def member(self, pk, user, **kwargs):
+    def member(cls, pk, user, **kwargs):
         query = kwargs.get('query', {})
 
         payload = {}
@@ -125,8 +116,7 @@ class OutputResource(GenericResource):
             'sample_count',
             'stream',
         ]:
-            value = query.get(key, [None])
-            if value:
+            if value := query.get(key, [None]):
                 value = value[0]
                 payload[key] = value
 
@@ -140,24 +130,20 @@ class OutputResource(GenericResource):
         pipeline = kwargs.get('parent_model')
         block = pipeline.get_block(pk)
         if block and block.is_data_integration():
-            outputs_by_stream = {}
-            outputs_by_stream_serialized = {}
+            if stream_id := payload.get('stream'):
+                outputs_by_stream = {}
+                outputs_by_stream_serialized = {}
 
-            stream_id = payload.get('stream')
-            if stream_id:
-                # This data is already serialized
-                outputs = read_data_from_cache(
+                if outputs := read_data_from_cache(
                     block,
                     stream_id,
                     partition=partition,
                     sample_count=sample_count,
-                )
-
-                if outputs:
+                ):
                     outputs_by_stream[stream_id] = outputs[0]
                     outputs_by_stream_serialized[stream_id] = outputs[0]
 
-                if len(outputs_by_stream) >= 1:
+                if outputs_by_stream:
                     for stream_id, output in outputs_by_stream.items():
                         output_serialized = outputs_by_stream_serialized.get(stream_id)
                         if not output_serialized:
@@ -168,4 +154,4 @@ class OutputResource(GenericResource):
                             uuid=stream_id,
                         ))
 
-        return self(model, user, **kwargs)
+        return cls(model, user, **kwargs)

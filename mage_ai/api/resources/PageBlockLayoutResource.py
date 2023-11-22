@@ -11,18 +11,16 @@ from mage_ai.shared.utils import clean_name
 
 class PageBlockLayoutResource(GenericResource):
     @classmethod
-    def get_model(self, pk):
+    def get_model(cls, pk):
         uuid = urllib.parse.unquote(pk)
         return PageBlockLayout.load(uuid)
 
     @classmethod
-    def member(self, pk, user, **kwargs):
-        model = self.get_model(pk)
-
-        if not model:
+    def member(cls, pk, user, **kwargs):
+        if model := cls.get_model(pk):
+            return cls(model, user, **kwargs)
+        else:
             raise ApiError(ApiError.RESOURCE_NOT_FOUND)
-
-        return self(model, user, **kwargs)
 
     def update(self, payload, **kwargs):
         blocks = payload.get('blocks') or {}
@@ -82,8 +80,7 @@ class PageBlockLayoutResource(GenericResource):
         for idx1, row in enumerate(layout):
             for idx2, column in enumerate(row):
                 block_uuid = column.get('block_uuid')
-                block = blocks_with_new_names.get(block_uuid)
-                if block:
+                if block := blocks_with_new_names.get(block_uuid):
                     layout[idx1][idx2]['block_uuid'] = block.get('uuid')
 
         self.model.blocks = blocks

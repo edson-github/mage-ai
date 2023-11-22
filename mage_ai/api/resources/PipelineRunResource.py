@@ -25,10 +25,9 @@ class PipelineRunResource(DatabaseResource):
 
     @classmethod
     @safe_db_query
-    async def collection(self, query_arg, meta, user, **kwargs):
+    async def collection(cls, query_arg, meta, user, **kwargs):
         pipeline_schedule_id = None
-        parent_model = kwargs.get('parent_model')
-        if parent_model:
+        if parent_model := kwargs.get('parent_model'):
             pipeline_schedule_id = parent_model.id
 
         start_timestamp, end_timestamp = get_query_timestamps(query_arg)
@@ -123,27 +122,26 @@ class PipelineRunResource(DatabaseResource):
         if end_timestamp is not None:
             results = results.filter(PipelineRun.created_at <= end_timestamp)
 
-        if order_by:
-            arr = []
-            for tup in order_by:
-                col, asc_desc = tup
-                asc_desc = asc_desc.lower()
-                pr_col = getattr(PipelineRun, col)
-                arr.append(getattr(pr_col, asc_desc)())
-            initial_results = results.order_by(*arr)
-        else:
-            initial_results = \
-                results.order_by(PipelineRun.execution_date.desc(), PipelineRun.id.desc())
+        if not order_by:
+            return results.order_by(
+                PipelineRun.execution_date.desc(), PipelineRun.id.desc()
+            )
 
-        return initial_results
+        arr = []
+        for tup in order_by:
+            col, asc_desc = tup
+            asc_desc = asc_desc.lower()
+            pr_col = getattr(PipelineRun, col)
+            arr.append(getattr(pr_col, asc_desc)())
+        return results.order_by(*arr)
 
     @classmethod
     @safe_db_query
-    async def process_collection(self, query_arg, meta, user, **kwargs):
-        total_results = await self.collection(query_arg, meta, user, **kwargs)
+    async def process_collection(cls, query_arg, meta, user, **kwargs):
+        total_results = await cls.collection(query_arg, meta, user, **kwargs)
         total_count = total_results.count()
 
-        limit = int((meta or {}).get(META_KEY_LIMIT, self.DEFAULT_LIMIT))
+        limit = int((meta or {}).get(META_KEY_LIMIT, cls.DEFAULT_LIMIT))
         offset = int((meta or {}).get(META_KEY_OFFSET, 0))
 
         include_pipeline_uuids = query_arg.get('include_pipeline_uuids', [False])
@@ -160,14 +158,11 @@ class PipelineRunResource(DatabaseResource):
                 pipeline_runs = total_results.all()
                 results = []
                 for run in pipeline_runs:
-                    filters = []
-
                     # Check pipeline_type of pipeline runs if filtering by pipeline type
                     if run.pipeline_uuid not in pipeline_type_by_pipeline_uuid:
                         pipeline_type_by_pipeline_uuid[run.pipeline_uuid] = run.pipeline_type
                     run_pipeline_type = pipeline_type_by_pipeline_uuid[run.pipeline_uuid]
-                    filters.append(run_pipeline_type == pipeline_type)
-
+                    filters = [run_pipeline_type == pipeline_type]
                     # Multiple filters can be added while iterating through pipeline_runs once
                     if all(filters):
                         results.append(run)
@@ -180,8 +175,7 @@ class PipelineRunResource(DatabaseResource):
             results = total_results.limit(limit + 1).offset(offset).all()
 
         pipeline_schedule_id = None
-        parent_model = kwargs.get('parent_model')
-        if parent_model:
+        if parent_model := kwargs.get('parent_model'):
             pipeline_schedule_id = parent_model.id
 
         pipeline_uuid = query_arg.get('pipeline_uuid', [None])
@@ -199,9 +193,9 @@ class PipelineRunResource(DatabaseResource):
         returned consistent across pages).
         """
         if (meta or {}).get(META_KEY_LIMIT, None) is not None and \
-            total_results.count() >= 1 and \
-            not disable_retries_grouping and \
-                (pipeline_uuid is not None or pipeline_schedule_id is not None):
+                total_results.count() >= 1 and \
+                not disable_retries_grouping and \
+                    (pipeline_uuid is not None or pipeline_schedule_id is not None):
 
             first_result = results[0]
             first_execution_date = first_result.execution_date
@@ -230,11 +224,7 @@ class PipelineRunResource(DatabaseResource):
         has_next = results_size > limit
         final_end_idx = results_size - 1 if has_next else results_size
 
-        result_set = self.build_result_set(
-            results[0:final_end_idx],
-            user,
-            **kwargs,
-        )
+        result_set = cls.build_result_set(results[:final_end_idx], user, **kwargs)
 
         result_set.metadata = {
             'count': total_count,
@@ -249,7 +239,7 @@ class PipelineRunResource(DatabaseResource):
 
     @classmethod
     @safe_db_query
-    def create(self, payload, user, **kwargs):
+    def create(cls, payload, user, **kwargs):
         pipeline_schedule = kwargs.get('parent_model')
 
         pipeline = Pipeline.get(pipeline_schedule.pipeline_uuid)
@@ -263,7 +253,7 @@ class PipelineRunResource(DatabaseResource):
 
     @safe_db_query
     def update(self, payload, **kwargs):
-        if 'retry_blocks' == payload.get('pipeline_run_action'):
+        if payload.get('pipeline_run_action') == 'retry_blocks':
             self.model.refresh()
             pipeline = Pipeline.get(self.model.pipeline_uuid)
             block_runs_to_retry = []
@@ -280,13 +270,13 @@ class PipelineRunResource(DatabaseResource):
                     if is_integration:
                         block_uuid_suffix = from_block_uuid[len(from_block.uuid):]
                         downstream_block_uuids = [from_block_uuid] + \
-                            [f'{b.uuid}{block_uuid_suffix}' for b in downstream_blocks]
+                                [f'{b.uuid}{block_uuid_suffix}' for b in downstream_blocks]
                     else:
                         downstream_block_uuids = [from_block_uuid] + \
-                            [b.uuid for b in downstream_blocks]
+                                [b.uuid for b in downstream_blocks]
 
                     block_runs_to_retry = \
-                        list(
+                            list(
                             filter(
                                 lambda br: br.block_uuid in downstream_block_uuids,
                                 self.model.block_runs
@@ -294,7 +284,7 @@ class PipelineRunResource(DatabaseResource):
                         )
             elif PipelineRun.PipelineRunStatus.COMPLETED != self.model.status:
                 block_runs_to_retry = \
-                    list(
+                        list(
                         filter(
                             lambda br: br.status != BlockRun.BlockRunStatus.COMPLETED,
                             self.model.block_runs

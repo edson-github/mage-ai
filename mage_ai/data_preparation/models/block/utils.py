@@ -97,13 +97,11 @@ def create_block_run_from_dynamic_child(
         index,
         upstream_block_uuid=upstream_block_uuid,
     )
-    block_run = pipeline_run.create_block_run(
+    return pipeline_run.create_block_run(
         block_uuid,
         metrics=metadata,
         skip_if_exists=skip_if_exists,
     )
-
-    return block_run
 
 
 def dynamic_block_values_and_metadata(
@@ -188,11 +186,7 @@ def create_block_runs_from_dynamic_block(
         block_runs_created_by_block_uuid = {}
         dynamic_child_block_runs = []
         for idx, _ in enumerate(values):
-            if idx < len(block_metadata):
-                metadata = block_metadata[idx].copy()
-            else:
-                metadata = {}
-
+            metadata = block_metadata[idx].copy() if idx < len(block_metadata) else {}
             arr = []
             for upstream_block in downstream_block.upstream_blocks:
                 if block_uuid_original == upstream_block.uuid and block_uuid_original != block_uuid:
@@ -304,10 +298,12 @@ def create_block_runs_from_dynamic_block(
                         skip_creating_downstream = True
                         break
 
-                    down_uuids_as_ancestors = []
-                    for down in dynamic_ancestor.downstream_blocks:
-                        if down.uuid in ancestors_uuids and not should_reduce_output(down):
-                            down_uuids_as_ancestors.append(down.uuid)
+                    down_uuids_as_ancestors = [
+                        down.uuid
+                        for down in dynamic_ancestor.downstream_blocks
+                        if down.uuid in ancestors_uuids
+                        and not should_reduce_output(down)
+                    ]
                     skip_creating_downstream = len(down_uuids_as_ancestors) >= 2
 
                 # Only create downstream block runs if it doesn’t have dynamically created upstream
@@ -449,13 +445,13 @@ def is_dynamic_block_child(block) -> bool:
     Returns:
         bool: True if the block is a dynamic block child, False otherwise.
     """
-    dynamic_or_child = []
-
-    for upstream_block in block.upstream_blocks:
-        if is_dynamic_block(upstream_block) or is_dynamic_block_child(upstream_block):
-            dynamic_or_child.append(upstream_block)
-
-    if len(dynamic_or_child) == 0:
+    dynamic_or_child = [
+        upstream_block
+        for upstream_block in block.upstream_blocks
+        if is_dynamic_block(upstream_block)
+        or is_dynamic_block_child(upstream_block)
+    ]
+    if not dynamic_or_child:
         return False
 
     dynamic_or_child_with_reduce = list(filter(lambda x: should_reduce_output(x), dynamic_or_child))
@@ -570,7 +566,7 @@ def is_valid_print_variable(k, v, block_uuid):
     if type(v) is not str:
         return False
     # Not store empty json
-    if v == '{}' or v == '':
+    if v in ['{}', '']:
         return False
     try:
         json_data = json.loads(v)
@@ -667,7 +663,7 @@ def fetch_input_variables(
         if upstream_block_uuids:
             upstream_block_uuids_final = upstream_block_uuids
     elif pipeline is not None:
-        input_vars = [None for i in range(len(upstream_block_uuids))]
+        input_vars = [None for _ in range(len(upstream_block_uuids))]
         input_variables_by_uuid = input_variables(
             pipeline,
             upstream_block_uuids,
@@ -735,11 +731,11 @@ def fetch_input_variables(
                 else:
                     final_val = variable_values
                 input_vars[idx] = final_val
-            elif dynamic_upstream_block_uuids and (should_reduce or upstream_in_dynamic_upstream):
+            elif dynamic_upstream_block_uuids and upstream_in_dynamic_upstream:
                 reduce_output_indexes.append((idx, upstream_block_uuid))
             elif is_dynamic_block(upstream_block):
                 val = None
-                if len(variable_values) >= 1:
+                if variable_values:
                     arr = variable_values[0]
                     index_to_use = 0 if dynamic_block_index is None else dynamic_block_index
 
@@ -758,14 +754,11 @@ def fetch_input_variables(
                     if type(arr) is list and len(arr) >= 1 and index_to_use < len(arr):
                         val = arr[index_to_use]
                     kwargs_vars.append(val)
-            elif not dynamic_upstream_block_uuids or not upstream_in_dynamic_upstream:
+            else:
                 if type(variable_values) is list and len(variable_values) == 1:
                     final_val = variable_values[0]
                 else:
                     final_val = variable_values
-
-                if should_reduce:
-                    final_val = [final_val]
 
                 input_vars[idx] = final_val
 
@@ -841,10 +834,17 @@ def fetch_input_variables(
                             val = variable_values[dynamic_block_index]
                             kwargs_vars.append(val)
 
-                if ((upstream_is_dynamic and dynamic_block_index is not None)
-                    or should_reduce) and \
-                        len(final_value) >= 1 and \
-                        all([type(v) is pd.DataFrame for v in final_value]):
+                if (
+                    (
+                        (
+                            upstream_is_dynamic
+                            and dynamic_block_index is not None
+                        )
+                        or should_reduce
+                    )
+                    and len(final_value) >= 1
+                    and all(type(v) is pd.DataFrame for v in final_value)
+                ):
                     final_value = pd.concat(final_value)
 
                 if not should_reduce:
