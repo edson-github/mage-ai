@@ -24,7 +24,7 @@ from mage_ai.shared.hash import merge_dict
 class StatusResource(GenericResource):
     @classmethod
     @safe_db_query
-    def collection(self, query, meta, user, **kwargs):
+    def collection(cls, query, meta, user, **kwargs):
         from mage_ai.cluster_manager.constants import (
             ECS_CLUSTER_NAME,
             GCP_PROJECT_ID,
@@ -65,7 +65,7 @@ class StatusResource(GenericResource):
         }
 
         display_format = meta.get('_format') if meta else None
-        if 'with_activity_details' == display_format:
+        if display_format == 'with_activity_details':
             from mage_ai.server.server import latest_user_activity
 
             project_schedules = PipelineSchedule.repo_query.all()
@@ -91,4 +91,4 @@ class StatusResource(GenericResource):
 
             status = merge_dict(status, activity_details)
 
-        return self.build_result_set([status], user, **kwargs)
+        return cls.build_result_set([status], user, **kwargs)

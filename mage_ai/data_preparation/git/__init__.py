@@ -55,10 +55,7 @@ class Git:
         os.makedirs(self.repo_path, exist_ok=True)
 
         if self.auth_type == AuthType.HTTPS:
-            url = None
-            if self.remote_repo_link:
-                url = urlsplit(self.remote_repo_link)
-
+            url = urlsplit(self.remote_repo_link) if self.remote_repo_link else None
             token = self.get_access_token()
 
             if self.git_config and url:
@@ -88,12 +85,7 @@ class Git:
                 self.origin.set_url(self.remote_repo_link)
 
     @classmethod
-    def get_manager(
-        self,
-        user: User = None,
-        setup_repo: bool = True,
-        auth_type: str = None,
-    ) -> 'Git':
+    def get_manager(cls, user: User = None, setup_repo: bool = True, auth_type: str = None) -> 'Git':
         preferences = get_preferences(user=user)
         git_config = None
         if preferences and preferences.sync_config:
@@ -106,17 +98,11 @@ class Git:
 
     @property
     def current_branch(self) -> Any:
-        if not self.repo:
-            return None
-
-        return self.repo.git.branch('--show-current')
+        return None if not self.repo else self.repo.git.branch('--show-current')
 
     @property
     def branches(self) -> List:
-        if not self.repo:
-            return []
-
-        return [branch.name for branch in self.repo.branches]
+        return [] if not self.repo else [branch.name for branch in self.repo.branches]
 
     def add_remote(self, name: str, url: str) -> None:
         self.repo.create_remote(name, url)
@@ -166,10 +152,10 @@ class Git:
             if os.path.exists(lock_file):
                 os.remove(lock_file)
             return []
-        # Untracked files prefix in porcelain mode
-        prefix = '?? '
-        files = []
         if stdout:
+            # Untracked files prefix in porcelain mode
+            prefix = '?? '
+            files = []
             for line in stdout.split('\n'):
                 # line = line.decode(defenc)
                 if not line.startswith(prefix):
@@ -337,10 +323,7 @@ class Git:
     def reset_hard(self, branch: str = None, remote_name: str = None) -> None:
         if branch is None:
             branch = self.current_branch
-        if remote_name is None:
-            remote = self.origin
-        else:
-            remote = self.repo.remotes[remote_name]
+        remote = self.origin if remote_name is None else self.repo.remotes[remote_name]
         remote.fetch()
         self.repo.git.reset('--hard', f'{remote.name}/{branch}')
         self.__pip_install()
@@ -366,7 +349,7 @@ class Git:
 
         self.set_origin(remote_name)
         remote = self.repo.remotes[remote_name]
-        if branch_name and len(branch_name) >= 1:
+        if branch_name:
             try:
                 remote.pull(branch_name, custom_progress)
             except git.exc.GitCommandError as err:
@@ -459,7 +442,7 @@ class Git:
             remote_url = None
             remote_exists = False
             try:
-                remote_url = [url for url in remote.urls][0]
+                remote_url = list(remote.urls)[0]
                 remote_exists = True
             except GitCommandError as err:
                 print('WARNING (mage_ai.data_preparation.git.remotes):')
@@ -470,10 +453,8 @@ class Git:
                 if len(remote_refs) == 0 and user:
                     from mage_ai.data_preparation.git import api
 
-                    access_token = api.get_access_token_for_user(user)
-                    if access_token:
-
-                        if remote_exists:
+                    if remote_exists:
+                        if access_token := api.get_access_token_for_user(user):
                             token = access_token.token
                             username = api.get_username(token)
                             url = api.build_authenticated_remote_url(
@@ -500,19 +481,22 @@ class Git:
                                     print('WARNING (mage_ai.data_preparation.git.remotes):')
                                     print(err)
 
-                refs = []
-                for ref in remote_refs:
-                    refs.append(dict(
+                refs = [
+                    dict(
                         name=ref.name,
                         commit=dict(
                             author=dict(
                                 email=ref.commit.author.email,
                                 name=ref.commit.author.name,
                             ),
-                            date=datetime.fromtimestamp(ref.commit.authored_date).isoformat(),
+                            date=datetime.fromtimestamp(
+                                ref.commit.authored_date
+                            ).isoformat(),
                             message=ref.commit.message,
                         ),
-                    ))
+                    )
+                    for ref in remote_refs
+                ]
             except Exception as err:
                 error = err
 
@@ -633,9 +617,9 @@ class Git:
             self.repo.working_dir, 'requirements.txt')
 
         with VerboseFunctionExec(
-            f'Running "pip3 install -r {requirements_file}"',
-            verbose=True,
-        ):
+                f'Running "pip3 install -r {requirements_file}"',
+                verbose=True,
+            ):
             try:
                 if os.path.exists(requirements_file):
                     cmd = f'pip3 install -r {requirements_file}'
@@ -643,13 +627,11 @@ class Git:
                 print(f'Installing {requirements_file} completed successfully.')
             except Exception as err:
                 print(f'Skip installing {requirements_file} due to error: {str(err)}')
-                pass
 
     def __create_ssh_keys(self) -> str:
         if not os.path.exists(DEFAULT_SSH_KEY_DIRECTORY):
             os.mkdir(DEFAULT_SSH_KEY_DIRECTORY, 0o700)
-        pubk_secret_name = self.git_config.ssh_public_key_secret_name
-        if pubk_secret_name:
+        if pubk_secret_name := self.git_config.ssh_public_key_secret_name:
             public_key_file = os.path.join(
                 DEFAULT_SSH_KEY_DIRECTORY,
                 f'id_rsa_{pubk_secret_name}.pub'
@@ -739,8 +721,7 @@ class Git:
 
     def __add_host_to_known_hosts(self):
         url = f'ssh://{self.git_config.remote_repo_link}'
-        hostname = urlparse(url).hostname
-        if hostname:
+        if hostname := urlparse(url).hostname:
             cmd = f'ssh-keyscan -t rsa {hostname} >> {DEFAULT_KNOWN_HOSTS_FILE}'
             self._run_command(cmd)
             return True
@@ -767,18 +748,16 @@ class Git:
 
         if return_code is not None:
             out, err = proc.communicate()
-            if return_code != 0:
-                message = (
-                    err.decode('UTF-8') if err
-                    else error_message
-                )
-                raise ChildProcessError(message)
-            else:
+            if return_code == 0:
                 return out.decode('UTF-8') if out else None
 
-        if return_code is None:
-            proc.kill()
-            raise TimeoutError
+            message = (
+                err.decode('UTF-8') if err
+                else error_message
+            )
+            raise ChildProcessError(message)
+        proc.kill()
+        raise TimeoutError
 
     def get_access_token(self) -> str:
         token = None

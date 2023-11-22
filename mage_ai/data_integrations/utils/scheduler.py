@@ -255,11 +255,8 @@ def build_block_run_metadata(
     partition: str = None,
     selected_streams: List[str] = None,
 ) -> List[Dict]:
-    block_run_metadata = []
-
     if not block.is_data_integration():
-        return block_run_metadata
-
+        return []
     data_integration_settings or block.get_data_integration_settings(
         dynamic_block_index=dynamic_block_index,
         dynamic_upstream_block_uuids=dynamic_upstream_block_uuids,
@@ -334,22 +331,19 @@ def __build_block_run_metadata_for_destination(
                 block_stream,
                 execution_partition=partition,
             ).get(stream_id)
-        else:
-            # If upstream not a source, convert first.
-            tup = convert_block_output_data_for_destination(
-                block,
-                chunk_size=MAX_QUERY_STRING_SIZE,
-                data_integration_uuid=data_integration_uuid,
-                dynamic_block_index=dynamic_block_index,
-                dynamic_upstream_block_uuids=dynamic_upstream_block_uuids,
-                global_vars=global_vars,
-                logger=logger,
-                logging_tags=logging_tags,
-                partition=partition,
-                stream=stream_id,
-            )
-            if tup:
-                output_file_paths = tup[0]
+        elif tup := convert_block_output_data_for_destination(
+            block,
+            chunk_size=MAX_QUERY_STRING_SIZE,
+            data_integration_uuid=data_integration_uuid,
+            dynamic_block_index=dynamic_block_index,
+            dynamic_upstream_block_uuids=dynamic_upstream_block_uuids,
+            global_vars=global_vars,
+            logger=logger,
+            logging_tags=logging_tags,
+            partition=partition,
+            stream=stream_id,
+        ):
+            output_file_paths = tup[0]
 
         # Create a child block run in batches.
         # Each batch will be based on number of output files in the output file path.
@@ -430,11 +424,12 @@ def __build_block_run_metadata_for_source(
             **tags2,
         )
 
-        for idx in range(number_of_batches):
-            block_run_metadata.append(dict(
+        block_run_metadata.extend(
+            dict(
                 index=idx,
                 number_of_batches=number_of_batches,
                 stream=tap_stream_id,
-            ))
-
+            )
+            for idx in range(number_of_batches)
+        )
     return block_run_metadata

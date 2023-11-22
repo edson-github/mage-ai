@@ -24,7 +24,7 @@ class UserResource(DatabaseResource):
 
     @classmethod
     @safe_db_query
-    def collection(self, query_arg, meta, user, **kwargs):
+    def collection(cls, query_arg, meta, user, **kwargs):
         results = (
             User.
             query.
@@ -56,7 +56,7 @@ class UserResource(DatabaseResource):
             if not payload.get(key):
                 missing_values.append(key)
 
-        if len(missing_values) >= 1:
+        if missing_values:
             error.update(
                 {'message': 'Missing required values: {}.'.format(', '.join(missing_values))})
             raise ApiError(error)
@@ -129,31 +129,33 @@ class UserResource(DatabaseResource):
                 get_project_uuid(),
             )
 
-            if self.current_user.is_admin:
-                if self.owner:
+            if self.owner:
+                if self.current_user.is_admin:
                     error.update(
                         {'message': 'Admins cannot update users who are Owners.'})
                     raise ApiError(error)
-                elif self.is_admin and self.current_user.id != self.id:
+            elif self.is_admin and self.current_user.id != self.id:
+                if self.current_user.is_admin:
                     error.update(
                         {'message': 'Admins cannot update users who are Admins.'})
                     raise ApiError(error)
-                elif access & Permission.Access.ADMIN != 0:
+            elif access & Permission.Access.ADMIN != 0:
+                if self.current_user.is_admin:
                     error.update(
                         {'message': 'Admins cannot make other users Admins.'})
                     raise ApiError(error)
-                elif access & Permission.Access.OWNER != 0:
+            elif access & Permission.Access.OWNER != 0:
+                if self.current_user.is_admin:
                     error.update(
                         {'message': 'Admins cannot make other users Owners.'})
                     raise ApiError(error)
 
-        password = payload.get('password')
-        if password:
+        if password := payload.get('password'):
             password_current = payload.get('password_current')
             password_confirmation = payload.get('password_confirmation')
 
             if self.current_user.id == self.id or \
-                    (not self.current_user.owner and self.current_user.roles & 1 == 0):
+                        (not self.current_user.owner and self.current_user.roles & 1 == 0):
                 if not password_current or not verify_password(
                     password_current,
                     self.password_hash,
@@ -182,17 +184,14 @@ class UserResource(DatabaseResource):
             # cache the result because of the collective loader.
             role_mapping = index_by(lambda x: x.id, self.model.roles_new or [])
 
-            role_ids_create = []
-            role_ids_delete = []
-
-            for role_id in role_ids:
-                if role_id not in role_mapping:
-                    role_ids_create.append(role_id)
-
-            for role_id in role_mapping.keys():
-                if role_id not in role_ids:
-                    role_ids_delete.append(role_id)
-
+            role_ids_create = [
+                role_id for role_id in role_ids if role_id not in role_mapping
+            ]
+            role_ids_delete = [
+                role_id
+                for role_id in role_mapping.keys()
+                if role_id not in role_ids
+            ]
             if role_ids_create:
                 db_connection.session.bulk_save_objects(
                     [UserRole(
@@ -221,13 +220,12 @@ class UserResource(DatabaseResource):
 
     @safe_db_query
     def token(self):
-        oauth_token = self.model_options.get('oauth_token')
-        if oauth_token:
+        if oauth_token := self.model_options.get('oauth_token'):
             return encode_token(oauth_token.token, oauth_token.expires)
 
     @classmethod
     @safe_db_query
-    def check_roles(self, role_ids):
+    def check_roles(cls, role_ids):
         missing_ids = []
         roles_new = []
         for role_id in role_ids:
@@ -237,7 +235,7 @@ class UserResource(DatabaseResource):
             else:
                 roles_new.append(role)
 
-        if len(missing_ids) > 0:
+        if missing_ids:
             error = ApiError.RESOURCE_INVALID.copy()
             error.update(
                 {'message': f'Roles with ids: {missing_ids} do not exist'})

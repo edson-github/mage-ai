@@ -112,24 +112,22 @@ class WorkloadManager:
                     name=name,
                     type=service_type,
                 )
-                pod = pod_mapping.get(name)
-                if pod:
+                if pod := pod_mapping.get(name):
                     status = pod.status.phase
                     workload['status'] = status.upper()
 
                     node_name = pod.spec.node_name
-                    ip = None
                     if service_type == 'NodePort':
+                        ip = None
                         try:
                             if node_name:
                                 items = self.core_client.list_node(
                                     field_selector=f'metadata.name={node_name}').items
                                 node = items[0]
-                                ip = find(
+                                if ip := find(
                                     lambda a: a.type == 'ExternalIP',
-                                    node.status.addresses
-                                ).address
-                                if ip:
+                                    node.status.addresses,
+                                ).address:
                                     node_port = service.spec.ports[0].node_port
                                     workload['ip'] = f'{ip}:{node_port}'
                         except Exception:
@@ -216,8 +214,7 @@ class WorkloadManager:
                     },
                 )
 
-            post_start_command = lifecycle_config.post_start.command
-            if post_start_command:
+            if post_start_command := lifecycle_config.post_start.command:
                 try:
                     post_start_command = json.loads(post_start_command)
                 except Exception:
@@ -323,13 +320,12 @@ class WorkloadManager:
                 }
             )
 
-        config_map = self.create_hooks_config_map(
+        if config_map := self.create_hooks_config_map(
             name,
             lifecycle_config.pre_start_script_path,
             mage_container_config,
             lifecycle_config.post_start,
-        )
-        if config_map:
+        ):
             volumes.append(
                 {
                     'name': 'lifecycle-hooks',
@@ -410,7 +406,7 @@ class WorkloadManager:
         annotations = {}
         if os.getenv(KUBE_SERVICE_GCP_BACKEND_CONFIG):
             annotations[GCP_BACKEND_CONFIG_ANNOTATION] = \
-                os.getenv(KUBE_SERVICE_GCP_BACKEND_CONFIG)
+                    os.getenv(KUBE_SERVICE_GCP_BACKEND_CONFIG)
 
         service = {
             'apiVersion': 'v1',
@@ -522,8 +518,7 @@ class WorkloadManager:
                 tty=False,
             )
             resp = ast.literal_eval(resp)
-            status = resp.get('statuses')[0]
-            return status
+            return resp.get('statuses')[0]
 
     def scale_down_workload(self, name: str) -> None:
         self.apps_client.patch_namespaced_stateful_set(
@@ -634,8 +629,7 @@ class WorkloadManager:
                 'value': project_uuid,
             })
 
-        connection_url_secrets_name = os.getenv(CONNECTION_URL_SECRETS_NAME)
-        if connection_url_secrets_name:
+        if connection_url_secrets_name := os.getenv(CONNECTION_URL_SECRETS_NAME):
             env_vars.append(
                 {
                     'name': DATABASE_CONNECTION_URL_ENV_VAR,
@@ -658,9 +652,7 @@ class WorkloadManager:
                     'value': str(os.getenv(var)),
                 })
 
-        # For connecting to CloudSQL PostgreSQL database.
-        db_secrets_name = os.getenv(DB_SECRETS_NAME)
-        if db_secrets_name:
+        if db_secrets_name := os.getenv(DB_SECRETS_NAME):
             env_vars.extend([
                 {
                     'name': PG_DB_USER,

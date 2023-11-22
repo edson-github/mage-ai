@@ -9,7 +9,7 @@ class OauthAccessTokenResource(DatabaseResource):
 
     @classmethod
     @safe_db_query
-    def collection(self, query_arg, meta, user, **kwargs):
+    def collection(cls, query_arg, meta, user, **kwargs):
         results = Oauth2AccessToken.query.filter(Oauth2AccessToken.user_id == user.id)
 
         show_all = query_arg.get('show_all', [None])

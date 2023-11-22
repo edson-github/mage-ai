@@ -12,7 +12,7 @@ from mage_ai.shared.hash import merge_dict
 
 class OauthPolicy(BasePolicy, UserPermissionMixIn):
     @classmethod
-    def action_rule_with_permissions(self, operation: OperationType) -> Dict:
+    def action_rule_with_permissions(cls, operation: OperationType) -> Dict:
         return merge_dict(
             super().action_rule_with_permissions(operation),
             {
@@ -26,18 +26,14 @@ class OauthPolicy(BasePolicy, UserPermissionMixIn):
         )
 
     @classmethod
-    def attribute_rule_with_permissions(
-        self,
-        attribute_operation_type: AttributeOperationType,
-        resource_attribute: str,
-    ) -> Dict:
+    def attribute_rule_with_permissions(cls, attribute_operation_type: AttributeOperationType, resource_attribute: str) -> Dict:
         config = {}
         if AttributeOperationType.READ == attribute_operation_type:
-            config = self.read_rules[self.__name__].get(resource_attribute)
+            config = cls.read_rules[cls.__name__].get(resource_attribute)
         elif AttributeOperationType.QUERY == attribute_operation_type:
-            config = self.query_rules[self.__name__].get(AttributeType.ALL)
+            config = cls.query_rules[cls.__name__].get(AttributeType.ALL)
         else:
-            config = self.write_rules[self.__name__].get(resource_attribute)
+            config = cls.write_rules[cls.__name__].get(resource_attribute)
 
         return merge_dict(
             super().attribute_rule_with_permissions(

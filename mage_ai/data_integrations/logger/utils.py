@@ -29,10 +29,7 @@ def print_log_from_line(
     try:
         data = json.loads(line)
 
-        if type(data) is not dict:
-            if type(data) is list and len(data) >= 1:
-                log_to_print = json.dumps(data)
-        else:
+        if type(data) is dict:
             message = data.get('message')
             tags1 = data.get('tags')
 
@@ -82,6 +79,8 @@ def print_log_from_line(
                 message = filter_out_config_values(message, config)
                 raise Exception(message)
 
+        elif type(data) is list and len(data) >= 1:
+            log_to_print = json.dumps(data)
         if log_to_print:
             print(filter_out_config_values(log_to_print, config))
     except json.decoder.JSONDecodeError:

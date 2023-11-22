@@ -9,8 +9,7 @@ from mage_ai.orchestration.db.models.schedules import PipelineRun
 class BlockPolicy(BasePolicy):
     @property
     def entity(self):
-        parent_model = self.options.get('parent_model')
-        if parent_model:
+        if parent_model := self.options.get('parent_model'):
             pipeline_uuid = None
             if isinstance(parent_model, PipelineRun):
                 pipeline_uuid = parent_model.pipeline_uuid

@@ -107,40 +107,40 @@ def check_auto_termination(cluster_type: ClusterType):
     Args:
         cluster_type (ClusterType): The type of cluster to check (e.g., ClusterType.K8S).
     """
-    if cluster_type == ClusterType.K8S:
-        workspaces = get_workspaces(cluster_type)
-        for ws in workspaces:
-            try:
-                termination_policy = ws.lifecycle_config.termination_policy
-                if termination_policy and termination_policy.enable_auto_termination:
-                    workload_manager = ws.workload_manager
-                    activity_details = workload_manager.get_workload_activity(ws.name)
-                    max_idle_seconds = int(termination_policy.max_idle_seconds)
-                    if activity_details and max_idle_seconds > 0:
-                        active_pipeline_run_count = activity_details.get(
-                            'active_pipeline_run_count'
-                        )
+    if cluster_type != ClusterType.K8S:
+        return
+    workspaces = get_workspaces(cluster_type)
+    for ws in workspaces:
+        try:
+            termination_policy = ws.lifecycle_config.termination_policy
+            if termination_policy and termination_policy.enable_auto_termination:
+                workload_manager = ws.workload_manager
+                activity_details = workload_manager.get_workload_activity(ws.name)
+                max_idle_seconds = int(termination_policy.max_idle_seconds)
+                if activity_details and max_idle_seconds > 0:
+                    active_pipeline_run_count = activity_details.get(
+                        'active_pipeline_run_count'
+                    )
 
-                        last_user_request_ts = activity_details.get('last_user_request')
-                        last_user_request = datetime.fromisoformat(last_user_request_ts)
+                    last_user_request_ts = activity_details.get('last_user_request')
+                    last_user_request = datetime.fromisoformat(last_user_request_ts)
 
-                        latest_activity_time = last_user_request.timestamp()
-                        last_scheduler_activity_ts = activity_details.get(
-                            'last_scheduler_activity'
+                    latest_activity_time = last_user_request.timestamp()
+                    if last_scheduler_activity_ts := activity_details.get(
+                        'last_scheduler_activity'
+                    ):
+                        last_scheduler_activity = datetime.fromisoformat(
+                            last_scheduler_activity_ts
                         )
-                        if last_scheduler_activity_ts:
-                            last_scheduler_activity = datetime.fromisoformat(
-                                last_scheduler_activity_ts
-                            )
-                            latest_activity_time = max(
-                                latest_activity_time,
-                                last_scheduler_activity.timestamp(),
-                            )
-                        now_time = datetime.utcnow().timestamp()
-                        if (
-                            not active_pipeline_run_count
-                            and now_time - latest_activity_time > max_idle_seconds
-                        ):
-                            ws.stop()
-            except Exception:
-                pass
+                        latest_activity_time = max(
+                            latest_activity_time,
+                            last_scheduler_activity.timestamp(),
+                        )
+                    now_time = datetime.utcnow().timestamp()
+                    if (
+                        not active_pipeline_run_count
+                        and now_time - latest_activity_time > max_idle_seconds
+                    ):
+                        ws.stop()
+        except Exception:
+            pass

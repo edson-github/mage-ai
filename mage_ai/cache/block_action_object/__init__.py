@@ -44,7 +44,7 @@ def parse_block_file_absolute_path(block_file_absolute_path: str) -> Dict:
     file_directory_name = Block.file_directory_name(block_type)
 
     # This is the block_file_absolute_path without the repo_path
-    file_path = str(block_file_absolute_path).replace(get_repo_path(), '')
+    file_path = block_file_absolute_path.replace(get_repo_path(), '')
     if file_path.startswith(os.sep):
         file_path = file_path[1:]
 
@@ -57,10 +57,7 @@ def parse_block_file_absolute_path(block_file_absolute_path: str) -> Dict:
     filename = os.path.join(*file_path_parts)
 
     filename_parts = filename.split('.')
-    file_extension = None
-    if len(filename_parts) >= 2:
-        file_extension = filename_parts[-1]
-
+    file_extension = filename_parts[-1] if len(filename_parts) >= 2 else None
     block_language = None
     if file_extension:
         block_language = FILE_EXTENSION_TO_BLOCK_LANGUAGE.get(file_extension)
@@ -78,8 +75,8 @@ class BlockActionObjectCache(BaseCache):
     cache_key = CACHE_KEY_BLOCK_ACTION_OBJECTS_MAPPING
 
     @classmethod
-    async def initialize_cache(self, replace: bool = False) -> 'BlockActionObjectCache':
-        cache = self()
+    async def initialize_cache(cls, replace: bool = False) -> 'BlockActionObjectCache':
+        cache = cls()
         if replace or not cache.exists():
             await cache.initialize_cache_for_all_objects()
 
@@ -114,8 +111,7 @@ class BlockActionObjectCache(BaseCache):
             'description',
             'tags',
         ]:
-            val = getattr(custom_block_template, key)
-            if val:
+            if val := getattr(custom_block_template, key):
                 if not isinstance(val, list):
                     val = [val]
                 arr += val
@@ -134,8 +130,7 @@ class BlockActionObjectCache(BaseCache):
             'description',
             'groups',
         ]:
-            val = block_action_object.get(key)
-            if val:
+            if val := block_action_object.get(key):
                 if not isinstance(val, list):
                     val = [val]
                 arr += val
@@ -264,7 +259,7 @@ class BlockActionObjectCache(BaseCache):
                 filename_parts = d.get('filename_parts')
                 language = d.get('language')
 
-                if '__init__.py' == filename:
+                if filename == '__init__.py':
                     continue
 
                 if not language:

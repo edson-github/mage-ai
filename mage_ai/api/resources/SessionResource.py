@@ -88,9 +88,11 @@ class SessionResource(BaseResource):
                 role_names = conn.get_user_roles(user_attributes)
                 if role_names:
                     roles = Role.query.filter(Role.name.in_(role_names)).all()
-                if not roles and \
-                        LDAP_DEFAULT_ACCESS is not None and \
-                        LDAP_DEFAULT_ACCESS in [r for r in Role.DefaultRole]:
+                if (
+                    not roles
+                    and LDAP_DEFAULT_ACCESS is not None
+                    and LDAP_DEFAULT_ACCESS in list(Role.DefaultRole)
+                ):
                     default_role = Role.get_role(LDAP_DEFAULT_ACCESS)
                     if default_role:
                         roles.append(default_role)
@@ -117,8 +119,8 @@ class SessionResource(BaseResource):
 
     @classmethod
     @safe_db_query
-    def member(self, pk, user, **kwargs):
-        return self(kwargs['oauth_token'], user, **kwargs)
+    def member(cls, pk, user, **kwargs):
+        return cls(kwargs['oauth_token'], user, **kwargs)
 
     @safe_db_query
     def update(self, payload, **kwargs):

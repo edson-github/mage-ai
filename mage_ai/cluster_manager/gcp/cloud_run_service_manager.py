@@ -215,9 +215,7 @@ class CloudRunServiceManager:
         )
 
     def __try_creating_resource(self, request, resource: str):
-        attempts = 0
-        while attempts < 10:
-            attempts += 1
+        for _ in range(10):
             try:
                 response = request.execute()
                 print(f'{resource} created!')

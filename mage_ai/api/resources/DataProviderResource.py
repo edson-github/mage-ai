@@ -37,7 +37,7 @@ DATA_PROVIDERS_NAME = {
 class DataProviderResource(GenericResource):
     @classmethod
     @safe_db_query
-    async def collection(self, query, meta, user, **kwargs):
+    async def collection(cls, query, meta, user, **kwargs):
         async with aiofiles.open(f'{get_repo_path()}/io_config.yaml', mode='r') as file:
             profiles = list(yaml.safe_load(await file.read()).keys())
 
@@ -47,8 +47,4 @@ class DataProviderResource(GenericResource):
             value=ds.value,
         ) for ds in DATA_PROVIDERS]
 
-        return self.build_result_set(
-            collection,
-            user,
-            **kwargs,
-        )
+        return cls.build_result_set(collection, user, **kwargs)

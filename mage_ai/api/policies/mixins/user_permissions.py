@@ -81,7 +81,10 @@ async def validate_condition_with_permissions(
     permissions = await (policy.resource or policy).load_and_cache_user_permissions()
 
     # If owner, then they get all permissions and it can’t be superseded.
-    if any([permission.access & PermissionAccess.OWNER for permission in permissions]):
+    if any(
+        permission.access & PermissionAccess.OWNER
+        for permission in permissions
+    ):
         return True
 
     async def __permission_grants_access(
@@ -255,33 +258,25 @@ async def validate_condition_with_permissions(
 
 class UserPermissionMixIn:
     @classmethod
-    def action_rule_with_permissions(self, operation: OperationType) -> Dict:
+    def action_rule_with_permissions(cls, operation: OperationType) -> Dict:
         return {
             OauthScope.CLIENT_PRIVATE: [
-                dict(
-                    condition=self.build_validate_condition(operation),
-                ),
+                dict(condition=cls.build_validate_condition(operation))
             ]
         }
 
     @classmethod
-    def attribute_rule_with_permissions(
-        self,
-        attribute_operation_type: AttributeOperationType,
-        resource_attribute: str,
-    ) -> Dict:
-        conditions = {}
-        for operation in OperationType:
-            conditions[operation.value] = [
+    def attribute_rule_with_permissions(cls, attribute_operation_type: AttributeOperationType, resource_attribute: str) -> Dict:
+        conditions = {
+            operation.value: [
                 dict(
-                    condition=self.build_validate_attribute(
-                        operation,
-                        attribute_operation_type,
-                        resource_attribute,
-                    ),
-                ),
+                    condition=cls.build_validate_attribute(
+                        operation, attribute_operation_type, resource_attribute
+                    )
+                )
             ]
-
+            for operation in OperationType
+        }
         return {
             OauthScope.CLIENT_PRIVATE: conditions,
         }

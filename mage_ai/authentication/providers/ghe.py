@@ -52,10 +52,7 @@ class GHEProvider(OauthProvider):
             scope='repo',
             state=uuid.uuid4().hex,
         )
-        query_strings = []
-        for k, v in query.items():
-            query_strings.append(f'{k}={v}')
-
+        query_strings = [f'{k}={v}' for k, v in query.items()]
         return dict(
             url=f"{self.hostname}/login/oauth/authorize?{'&'.join(query_strings)}",
             redirect_query_params=redirect_uri_query,

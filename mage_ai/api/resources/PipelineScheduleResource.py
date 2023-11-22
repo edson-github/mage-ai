@@ -34,7 +34,7 @@ class PipelineScheduleResource(DatabaseResource):
 
     @classmethod
     @safe_db_query
-    def collection(self, query_arg, meta, user, **kwargs):
+    def collection(cls, query_arg, meta, user, **kwargs):
         pipeline = kwargs.get('parent_model')
 
         global_data_product_uuid = query_arg.get('global_data_product_uuid', [None])
@@ -68,21 +68,20 @@ class PipelineScheduleResource(DatabaseResource):
 
         if len(tag_names) >= 1:
             tag_associations = (
-                TagAssociation.
-                select(
+                TagAssociation.select(
                     Tag.name,
                     TagAssociation.taggable_id,
                     TagAssociation.taggable_type,
-                ).
-                join(
+                )
+                .join(
                     Tag,
                     Tag.id == TagAssociation.tag_id,
-                ).
-                filter(
+                )
+                .filter(
                     Tag.name.in_(tag_names),
-                    TagAssociation.taggable_type == self.model_class.__name__,
-                ).
-                all()
+                    TagAssociation.taggable_type == cls.model_class.__name__,
+                )
+                .all()
             )
             query = query.filter(
                 PipelineSchedule.id.in_([ta.taggable_id for ta in tag_associations]),
@@ -108,16 +107,17 @@ class PipelineScheduleResource(DatabaseResource):
                 options(selectinload(PipelineSchedule.pipeline_runs))
             )
 
-            if global_data_product_uuid:
-                query = query.filter(
-                    PipelineSchedule.global_data_product_uuid == global_data_product_uuid,
+            query = (
+                query.filter(
+                    PipelineSchedule.global_data_product_uuid
+                    == global_data_product_uuid,
                 )
-            else:
-                query = query.filter(
+                if global_data_product_uuid
+                else query.filter(
                     PipelineSchedule.global_data_product_uuid.is_(None),
                     PipelineSchedule.pipeline_uuid == pipeline.uuid,
                 )
-
+            )
             return query.order_by(PipelineSchedule.id.desc(), PipelineSchedule.start_time.desc())
 
         order_by = query_arg.get('order_by', [None])
@@ -129,11 +129,11 @@ class PipelineScheduleResource(DatabaseResource):
                 query = query.order_by(PipelineSchedule.name.asc())
             elif order_by == 'pipeline_uuid':
                 query = query.order_by(PipelineSchedule.pipeline_uuid.asc())
-            elif order_by == 'status':
-                query = query.order_by(PipelineSchedule.status.asc())
             elif order_by == 'schedule_type':
                 query = query.order_by(PipelineSchedule.schedule_type.asc())
 
+            elif order_by == 'status':
+                query = query.order_by(PipelineSchedule.status.asc())
         return query.all()
 
     @classmethod
@@ -193,7 +193,7 @@ class PipelineScheduleResource(DatabaseResource):
             )
             for em in ems:
                 new_ids = [schedule for schedule in em.pipeline_schedules if schedule.id != self.id]
-                ps = [p for p in PipelineSchedule.query.filter(PipelineSchedule.id.in_(new_ids))]
+                ps = list(PipelineSchedule.query.filter(PipelineSchedule.id.in_(new_ids)))
                 em.update(pipeline_schedules=ps)
 
         tag_names = payload.pop('tags', None)
@@ -208,7 +208,7 @@ class PipelineScheduleResource(DatabaseResource):
                 else:
                     tag_associations_to_delete.append(ta)
 
-            if len(tag_associations_to_delete) >= 1:
+            if tag_associations_to_delete:
                 delete_query = TagAssociation.__table__.delete().where(
                     TagAssociation.id.in_(
                         [ta.id for ta in tag_associations_to_delete],
@@ -230,7 +230,7 @@ class PipelineScheduleResource(DatabaseResource):
             # 4. Create new tags
             tag_names_to_keep = [ta.name for ta in tag_associations_to_keep]
             tag_names_to_create = \
-                [tag_name for tag_name in tag_names if tag_name not in (
+                    [tag_name for tag_name in tag_names if tag_name not in (
                     existing_tag_names + tag_names_to_keep
                 )]
 
@@ -273,8 +273,7 @@ class PipelineScheduleResource(DatabaseResource):
         resource = super().update(payload)
         updated_model = resource.model
 
-        pipeline = Pipeline.get(updated_model.pipeline_uuid)
-        if pipeline:
+        if pipeline := Pipeline.get(updated_model.pipeline_uuid):
             trigger = Trigger(
                 name=updated_model.name,
                 pipeline_uuid=updated_model.pipeline_uuid,

@@ -26,7 +26,7 @@ from mage_ai.orchestration.db.models.oauth import Oauth2AccessToken, Oauth2Appli
 class OauthResource(GenericResource):
     @classmethod
     @safe_db_query
-    async def collection(self, query, meta, user, **kwargs):
+    async def collection(cls, query, meta, user, **kwargs):
         redirect_uri = query.get('redirect_uri', [None])
         if redirect_uri:
             redirect_uri = redirect_uri[0]
@@ -35,20 +35,19 @@ class OauthResource(GenericResource):
         for provider, provider_class in NAME_TO_PROVIDER.items():
             try:
                 provider_instance = provider_class()
-                auth_url_response = provider_instance.get_auth_url_response(
+                if auth_url_response := provider_instance.get_auth_url_response(
                     redirect_uri=redirect_uri
-                )
-                if auth_url_response:
+                ):
                     auth_url_response['provider'] = provider
                     oauths.append(auth_url_response)
             except Exception:
                 continue
 
-        return self.build_result_set(oauths, user, **kwargs)
+        return cls.build_result_set(oauths, user, **kwargs)
 
     @classmethod
     @safe_db_query
-    def create(self, payload, user, **kwargs):
+    def create(cls, payload, user, **kwargs):
         error = ApiError.RESOURCE_INVALID.copy()
 
         provider = payload.get('provider')
@@ -89,18 +88,18 @@ class OauthResource(GenericResource):
                 token=token,
             )
 
-        return self(
+        return cls(
             dict(
                 authenticated=True,
                 expires=access_token.expires,
                 provider=provider,
             ),
             user,
-            **kwargs,
+            **kwargs
         )
 
     @classmethod
-    async def member(self, pk, user, **kwargs):
+    async def member(cls, pk, user, **kwargs):
         error = ApiError.RESOURCE_INVALID.copy()
         if pk not in VALID_OAUTH_PROVIDERS:
             error.update(dict(message='Invalid provider.'))
@@ -122,23 +121,15 @@ class OauthResource(GenericResource):
             provider = pk
 
         provider_class = NAME_TO_PROVIDER.get(provider)
-        provider_instance = None
-        if provider_class is not None:
-            provider_instance = provider_class()
-
+        provider_instance = provider_class() if provider_class is not None else None
         access_tokens = access_tokens_for_client(
             get_oauth_client_id(provider),
             user=user,
         )
         model = dict(provider=provider)
-        authenticated = len(access_tokens) >= 1
-        if authenticated:
+        if authenticated := len(access_tokens) >= 1:
             model['authenticated'] = authenticated
-            model['expires'] = max(
-                [access_token.expires for access_token in access_tokens]
-            )
-        # If an oauth code is provided, we need to exchange it for an access token for
-        # the provider and return the redirect uri.
+            model['expires'] = max(access_token.expires for access_token in access_tokens)
         elif code:
             if provider_instance is not None:
                 # 1. Obtain an access token from the Oauth provider.
@@ -169,37 +160,31 @@ class OauthResource(GenericResource):
                 )
 
                 model['url'] = redirect_uri_final
-        # Otherwise, return the authorization url to start the oauth flow.
-        else:
-            if OAUTH_PROVIDER_GITHUB == provider:
-                query = dict(
-                    client_id=GITHUB_CLIENT_ID,
-                    redirect_uri=urllib.parse.quote_plus(
-                        '?'.join(
-                            [
-                                f'https://api.mage.ai/v1/oauth/{pk}',
-                                f'redirect_uri={urllib.parse.unquote(redirect_uri)}',
-                            ]
-                        )
-                    ),
-                    scope='repo',
-                    state=GITHUB_STATE,
-                )
-                query_strings = []
-                for k, v in query.items():
-                    query_strings.append(f'{k}={v}')
+        elif OAUTH_PROVIDER_GITHUB == provider:
+            query = dict(
+                client_id=GITHUB_CLIENT_ID,
+                redirect_uri=urllib.parse.quote_plus(
+                    '?'.join(
+                        [
+                            f'https://api.mage.ai/v1/oauth/{pk}',
+                            f'redirect_uri={urllib.parse.unquote(redirect_uri)}',
+                        ]
+                    )
+                ),
+                scope='repo',
+                state=GITHUB_STATE,
+            )
+            query_strings = [f'{k}={v}' for k, v in query.items()]
+            model[
+                'url'
+            ] = f"https://github.com/login/oauth/authorize?{'&'.join(query_strings)}"
+        elif provider_instance is not None:
+            if resp := provider_instance.get_auth_url_response(
+                redirect_uri=redirect_uri
+            ):
+                model.update(resp)
 
-                model[
-                    'url'
-                ] = f"https://github.com/login/oauth/authorize?{'&'.join(query_strings)}"
-            elif provider_instance is not None:
-                resp = provider_instance.get_auth_url_response(
-                    redirect_uri=redirect_uri
-                )
-                if resp:
-                    model.update(resp)
-
-        return self(model, user, **kwargs)
+        return cls(model, user, **kwargs)
 
     def update(self, payload, **kwargs):
         provider = self.model.get('provider')

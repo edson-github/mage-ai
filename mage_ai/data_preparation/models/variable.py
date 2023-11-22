@@ -61,10 +61,7 @@ class Variable:
         clean_block_uuid: bool = True,
     ) -> None:
         self.uuid = uuid
-        if storage is None:
-            self.storage = LocalStorage()
-        else:
-            self.storage = storage
+        self.storage = LocalStorage() if storage is None else storage
         # if not self.storage.path_exists(pipeline_path):
         #     raise Exception(f'Pipeline path {pipeline_path} does not exist.')
         self.pipeline_path = pipeline_path
@@ -88,7 +85,7 @@ class Variable:
         return os.path.join(self.variable_dir_path, self.uuid or '')
 
     @classmethod
-    def dir_path(self, pipeline_path, block_uuid):
+    def dir_path(cls, pipeline_path, block_uuid):
         return os.path.join(pipeline_path, VARIABLE_DIR, clean_name(block_uuid))
 
     def check_variable_type(self, spark=None):

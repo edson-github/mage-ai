@@ -31,9 +31,9 @@ class GitCustomBranchPresenter(GitBranchPresenter):
             if arr and type(arr) is list and len(arr) >= 1:
                 data_to_display[key] = arr[:100]
 
-        if 'with_basic_details' == display_format:
+        if display_format == 'with_basic_details':
             return dict(name=data_to_display.get('name'))
-        elif 'with_files' == display_format:
+        elif display_format == 'with_files':
             data_to_display.update(
                 files=await self.resource.files(
                     self.model.get('modified_files', []),
@@ -42,9 +42,9 @@ class GitCustomBranchPresenter(GitBranchPresenter):
                     limit=100,
                 )
             )
-        elif 'with_logs' == display_format:
+        elif display_format == 'with_logs':
             data_to_display.update(logs=self.resource.logs(commits=12))
-        elif 'with_remotes' == display_format:
+        elif display_format == 'with_remotes':
             data_to_display.update(remotes=self.resource.remotes(limit=100))
 
         return data_to_display

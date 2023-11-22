@@ -125,9 +125,8 @@ class PipelineResource(BaseResource):
                 err_message = f'Error loading pipeline {uuid}: {err}.'
                 if err.__class__.__name__ == 'OSError' and 'Too many open files' in err.strerror:
                     raise Exception(err_message)
-                else:
-                    print(err_message)
-                    return None
+                print(err_message)
+                return None
 
         pipelines = await asyncio.gather(
             *[get_pipeline(uuid) for uuid in pipeline_uuids]
@@ -189,7 +188,7 @@ class PipelineResource(BaseResource):
         if include_schedules and pipeline_statuses:
             pipelines = filtered_pipelines
 
-        if len(history_by_pipeline_uuid) >= 1:
+        if history_by_pipeline_uuid:
             for pipeline in pipelines:
                 if pipeline.uuid in history_by_pipeline_uuid:
                     pipeline.history = history_by_pipeline_uuid.get(pipeline.uuid)
@@ -202,7 +201,7 @@ class PipelineResource(BaseResource):
 
     @classmethod
     @safe_db_query
-    async def create(self, payload, user, **kwargs):
+    async def create(cls, payload, user, **kwargs):
         clone_pipeline_uuid = payload.get('clone_pipeline_uuid')
         template_uuid = payload.get('custom_template_uuid')
         name = payload.get('name')
@@ -235,8 +234,7 @@ class PipelineResource(BaseResource):
                     for block_number, block_payload_orig in llm_response.items():
                         block_payload = block_payload_orig.copy()
 
-                        configuration = block_payload.get('configuration')
-                        if configuration:
+                        if configuration := block_payload.get('configuration'):
                             for k, v in configuration.items():
                                 configuration[k] = v.value if isinstance(v, Enum) else v
 
@@ -270,7 +268,7 @@ class PipelineResource(BaseResource):
                             upstream_block_uuids=upstream_block_uuids,
                         )
 
-                    for _block_number, config in blocks_mapping.items():
+                    for config in blocks_mapping.values():
                         upstream_block_uuids = config['upstream_block_uuids']
 
                         if upstream_block_uuids and len(upstream_block_uuids) >= 1:
@@ -291,16 +289,16 @@ class PipelineResource(BaseResource):
             user=user.id if user else None,
         )
 
-        return self(pipeline, user, **kwargs)
+        return cls(pipeline, user, **kwargs)
 
     @classmethod
     @safe_db_query
-    async def get_model(self, pk):
+    async def get_model(cls, pk):
         return await Pipeline.get_async(pk)
 
     @classmethod
     @safe_db_query
-    async def member(self, pk, user, **kwargs):
+    async def member(cls, pk, user, **kwargs):
         pipeline = await Pipeline.get_async(pk)
 
         api_operation_action = kwargs.get('api_operation_action', None)
@@ -329,7 +327,7 @@ class PipelineResource(BaseResource):
 
             await BlockCache.initialize_cache()
 
-        return self(pipeline, user, **kwargs)
+        return cls(pipeline, user, **kwargs)
 
     @safe_db_query
     def delete(self, **kwargs):
@@ -514,7 +512,7 @@ class PipelineResource(BaseResource):
         def retry_incomplete_block_runs(pipeline_uuid: str):
             incomplete_block_run_results = query_incomplete_block_runs(pipeline_uuid)
             block_run_ids = [r[0] for r in incomplete_block_run_results]
-            pipeline_run_ids = list(set([r[2] for r in incomplete_block_run_results]))
+            pipeline_run_ids = list({r[2] for r in incomplete_block_run_results})
             BlockRun.batch_update_status(
                 block_run_ids,
                 BlockRun.BlockRunStatus.INITIAL,
@@ -528,25 +526,26 @@ class PipelineResource(BaseResource):
         pipeline_uuid = self.model.uuid
 
         def _update_callback(resource):
-            if status:
-                pipeline_schedule_id = payload.get('pipeline_schedule_id')
-                pipeline_runs = payload.get('pipeline_runs')
-                if status in [
-                    ScheduleStatus.ACTIVE.value,
-                    ScheduleStatus.INACTIVE.value,
-                ]:
-                    update_schedule_status(status, pipeline_uuid)
-                elif status == PipelineRun.PipelineRunStatus.CANCELLED.value:
-                    if pipeline_runs is not None:
-                        cancel_pipeline_runs(pipeline_runs=pipeline_runs)
-                    elif pipeline_schedule_id is not None:
-                        cancel_pipeline_runs(pipeline_schedule_id=pipeline_schedule_id)
-                    else:
-                        cancel_pipeline_runs(pipeline_uuid=pipeline_uuid)
-                elif status == 'retry' and pipeline_runs:
-                    retry_pipeline_runs(pipeline_runs)
-                elif status == 'retry_incomplete_block_runs':
-                    retry_incomplete_block_runs(pipeline_uuid)
+            if not status:
+                return
+            pipeline_schedule_id = payload.get('pipeline_schedule_id')
+            pipeline_runs = payload.get('pipeline_runs')
+            if status in [
+                ScheduleStatus.ACTIVE.value,
+                ScheduleStatus.INACTIVE.value,
+            ]:
+                update_schedule_status(status, pipeline_uuid)
+            elif status == PipelineRun.PipelineRunStatus.CANCELLED.value:
+                if pipeline_runs is not None:
+                    cancel_pipeline_runs(pipeline_runs=pipeline_runs)
+                elif pipeline_schedule_id is not None:
+                    cancel_pipeline_runs(pipeline_schedule_id=pipeline_schedule_id)
+                else:
+                    cancel_pipeline_runs(pipeline_uuid=pipeline_uuid)
+            elif status == 'retry' and pipeline_runs:
+                retry_pipeline_runs(pipeline_runs)
+            elif status == 'retry_incomplete_block_runs':
+                retry_incomplete_block_runs(pipeline_uuid)
 
         self.on_update_callback = _update_callback
 

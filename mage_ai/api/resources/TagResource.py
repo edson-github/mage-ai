@@ -10,7 +10,7 @@ class TagResource(DatabaseResource):
 
     @classmethod
     @safe_db_query
-    async def collection(self, query, meta, user, **kwargs):
+    async def collection(cls, query, meta, user, **kwargs):
         cache = await TagCache.initialize_cache()
         tag_uuids = cache.get_tags().keys()
         tags = sorted(
@@ -21,8 +21,4 @@ class TagResource(DatabaseResource):
             key=lambda x: x.name,
         )
 
-        return self.build_result_set(
-            tags,
-            user,
-            **kwargs,
-        )
+        return cls.build_result_set(tags, user, **kwargs)

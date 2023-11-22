@@ -15,7 +15,7 @@ from mage_ai.shared.array import find
 class FileContentResource(GenericResource):
     @classmethod
     @safe_db_query
-    async def member(self, pk, user, **kwargs):
+    async def member(cls, pk, user, **kwargs):
         file = None
 
         if 'payload' in kwargs and 'file_content' in kwargs['payload']:
@@ -23,8 +23,7 @@ class FileContentResource(GenericResource):
             if 'block_uuid' in payload and 'pipeline_uuid' in payload:
                 pipeline = await Pipeline.get_async(payload.get('pipeline_uuid'))
                 if pipeline:
-                    block = pipeline.get_block(payload.get('block_uuid'))
-                    if block:
+                    if block := pipeline.get_block(payload.get('block_uuid')):
                         file = block.file
 
         if not file:
@@ -38,7 +37,7 @@ class FileContentResource(GenericResource):
             error.update(
                 message=f'File at path: {file.file_path} is not in the project directory.')
             raise ApiError(error)
-        return self(file, user, **kwargs)
+        return cls(file, user, **kwargs)
 
     async def update(self, payload, **kwargs):
         error = ApiError.RESOURCE_INVALID.copy()
@@ -56,7 +55,6 @@ class FileContentResource(GenericResource):
 
         self.model.update_content(content)
 
-        block_type = Block.block_type_from_path(self.model.dir_path)
-        if block_type:
+        if block_type := Block.block_type_from_path(self.model.dir_path):
             cache_block_action_object = await BlockActionObjectCache.initialize_cache()
             cache_block_action_object.update_block(block_file_absolute_path=self.model.file_path)

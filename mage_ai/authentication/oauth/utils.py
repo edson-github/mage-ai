@@ -29,7 +29,7 @@ def access_tokens_for_client(
             Oauth2AccessToken.oauth2_application_id == oauth_client.id,
         )
 
-    return [row for row in access_tokens]
+    return list(access_tokens)
 
 
 def add_access_token_to_query(data: Dict, query: Dict) -> Dict:
@@ -53,9 +53,7 @@ def add_access_token_to_query(data: Dict, query: Dict) -> Dict:
     Returns:
         Dict: The updated query dictionary.
     """
-    access_token = data.get('access_token')
-
-    if access_token:
+    if access_token := data.get('access_token'):
         query['access_token'] = access_token
     else:
         error = data.get('error')

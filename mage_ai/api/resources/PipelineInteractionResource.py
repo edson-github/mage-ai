@@ -11,15 +11,15 @@ from mage_ai.shared.hash import extract, merge_dict
 class PipelineInteractionResource(GenericResource):
     @classmethod
     @safe_db_query
-    async def get_model(self, pk):
+    async def get_model(cls, pk):
         uuid = urllib.parse.unquote(pk)
         pipeline = await Pipeline.get_async(uuid)
         return PipelineInteractions(pipeline)
 
     @classmethod
     @safe_db_query
-    async def member(self, pk, user, **kwargs):
-        model = await self.get_model(pk)
+    async def member(cls, pk, user, **kwargs):
+        model = await cls.get_model(pk)
 
         query = kwargs.get('query', {})
         filter_for_permissions = query.get('filter_for_permissions', [False])
@@ -29,7 +29,7 @@ class PipelineInteractionResource(GenericResource):
         if filter_for_permissions:
             await model.filter_for_permissions(user)
 
-        return self(model, user, **kwargs)
+        return cls(model, user, **kwargs)
 
     async def update(self, payload, **kwargs):
         payload_update = {}
@@ -44,8 +44,7 @@ class PipelineInteractionResource(GenericResource):
 
         await self.model.update(**payload_update)
 
-        interactions = payload.get('interactions') or {}
-        if interactions:
+        if interactions := payload.get('interactions') or {}:
             for interaction_uuid, interaction in interactions.items():
                 resource = InteractionResource.member(
                     interaction_uuid,

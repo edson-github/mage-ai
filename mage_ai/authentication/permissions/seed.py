@@ -145,7 +145,7 @@ async def get_key(policy_class, condition):
             key = KEY_EDITOR
         elif editor and editor_notebook and not editor_pipeline:
             key = KEY_EDITOR_NOTEBOOK
-        elif editor and not editor_notebook and editor_pipeline:
+        elif editor and not editor_notebook:
             key = KEY_EDITOR_PIPELINE
         elif admin:
             key = KEY_ADMIN
@@ -222,15 +222,17 @@ async def bootstrap_permissions():
     read_rules_mapping = {}
     write_rules_mapping = {}
 
-    policy_names = []
-    for n in os.listdir(policies.__path__[0]):
-        if n.endswith('Policy.py') and n not in [
+    policy_names = [
+        n.replace('Policy.py', '')
+        for n in os.listdir(policies.__path__[0])
+        if n.endswith('Policy.py')
+        and n
+        not in [
             'BasePolicy.py',
             'SeedPolicy.py',
             'UserPolicy.py',
-        ]:
-            policy_names.append(n.replace('Policy.py', ''))
-
+        ]
+    ]
     for policy_name in policy_names:
         policy_class = getattr(
             importlib.import_module(f'mage_ai.api.policies.{policy_name}Policy'),
@@ -560,11 +562,12 @@ async def bootstrap_permissions():
 
             if arr and len(arr) >= 1:
                 if options:
-                    arr = list(filter(
-                        lambda x: x.options and x.options == options,
-                        arr,
-                    ))
-                    if arr and len(arr) >= 1:
+                    if arr := list(
+                        filter(
+                            lambda x: x.options and x.options == options,
+                            arr,
+                        )
+                    ):
                         permission = arr[0]
                 else:
                     permission = arr[0]
@@ -579,8 +582,7 @@ async def bootstrap_permissions():
                 )
                 permissions_new.append(permission)
 
-        roles = Role.query.filter(Role.name == role_name).all()
-        if roles:
+        if roles := Role.query.filter(Role.name == role_name).all():
             role = roles[0]
             print(f'Role {role.name} ({role.id}) found.')
         else:

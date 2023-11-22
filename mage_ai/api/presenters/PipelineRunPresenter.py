@@ -71,7 +71,7 @@ class PipelineRunPresenter(BasePresenter):
             data['block_runs'] = arr
 
             return data
-        elif 'with_basic_details' == display_format:
+        elif display_format == 'with_basic_details':
             data = data_to_display.to_dict()
 
             return dict(

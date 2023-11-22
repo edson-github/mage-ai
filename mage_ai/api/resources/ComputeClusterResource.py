@@ -8,7 +8,7 @@ from mage_ai.services.ssh.aws.emr.utils import tunnel
 
 class ComputeClusterResource(GenericResource):
     @classmethod
-    async def collection(self, query_arg, _meta, user, **kwargs):
+    async def collection(cls, query_arg, _meta, user, **kwargs):
         parent_model = kwargs.get('parent_model')
 
         include_all_states = query_arg.get('include_all_states', [None])
@@ -29,14 +29,10 @@ class ComputeClusterResource(GenericResource):
                 except Exception as err:
                     print(f'[WARNING] ComputeClusterResource.collection: {err}')
 
-        return self.build_result_set(
-            clusters,
-            user,
-            **kwargs,
-        )
+        return cls.build_result_set(clusters, user, **kwargs)
 
     @classmethod
-    async def member(self, pk, user, **kwargs):
+    async def member(cls, pk, user, **kwargs):
         parent_model = kwargs.get('parent_model')
 
         cluster = None
@@ -45,12 +41,16 @@ class ComputeClusterResource(GenericResource):
             if ComputeServiceUUID.AWS_EMR == parent_model.uuid:
                 cluster = parent_model.get_cluster_details(pk)
 
-        return self(dict(
-            cluster=cluster,
-        ), user, **kwargs)
+        return cls(
+            dict(
+                cluster=cluster,
+            ),
+            user,
+            **kwargs
+        )
 
     @classmethod
-    def create(self, payload, user, **kwargs):
+    def create(cls, payload, user, **kwargs):
         parent_model = kwargs.get('parent_model')
 
         cluster = None
@@ -59,9 +59,13 @@ class ComputeClusterResource(GenericResource):
             if ComputeServiceUUID.AWS_EMR == parent_model.uuid:
                 cluster = parent_model.create_cluster()
 
-        return self(dict(
-            cluster=cluster,
-        ), user, **kwargs)
+        return cls(
+            dict(
+                cluster=cluster,
+            ),
+            user,
+            **kwargs
+        )
 
     async def delete(self, **kwargs):
         parent_model = kwargs.get('parent_model')
@@ -98,8 +102,7 @@ class ComputeClusterResource(GenericResource):
         cluster_id = None
 
         if 'cluster' in self.model:
-            cluster = self.get_cluster()
-            if cluster:
+            if cluster := self.get_cluster():
                 cluster_id = None
                 if isinstance(cluster, Cluster):
                     cluster_id = cluster.id

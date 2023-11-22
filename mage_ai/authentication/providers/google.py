@@ -40,10 +40,7 @@ class GoogleProvider(SsoProvider, OauthProvider):
             scope='https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile',  # noqa: E501
             state=uuid.uuid4().hex,
         )
-        query_strings = []
-        for k, v in query.items():
-            query_strings.append(f'{k}={v}')
-
+        query_strings = [f'{k}={v}' for k, v in query.items()]
         return dict(
             url=f"https://accounts.google.com/o/oauth2/v2/auth?{'&'.join(query_strings)}",
             redirect_query_params=redirect_uri_query,

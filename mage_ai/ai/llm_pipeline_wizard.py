@@ -245,9 +245,11 @@ class LLMPipelineWizard:
                 variable_values,
                 PROMPT_FOR_CUSTOMIZED_CODE_IN_PYTHON
             )
-            if 'action_code' in customized_logic.keys() \
-                and customized_logic.get('action_code') \
-                    and "null" != customized_logic.get('action_code'):
+            if (
+                'action_code' in customized_logic.keys()
+                and customized_logic.get('action_code')
+                and customized_logic.get('action_code') != "null"
+            ):
                 block_code = block_code.replace(
                     'action_code=\'\'',
                     f'action_code=\'{customized_logic.get("action_code")}\'')
@@ -340,9 +342,7 @@ class LLMPipelineWizard:
         block_tasks = []
         for line in splited_block_descriptions.strip().split('\n'):
             if line.startswith('BLOCK') and ':' in line:
-                # Extract the block_id and block_description from the line
-                match = re.search(BLOCK_SPLIT_PATTERN, line)
-                if match:
+                if match := re.search(BLOCK_SPLIT_PATTERN, line):
                     block_id = match.group(1)
                     block_description = match.group(2).strip()
                     upstream_blocks = match.group(3).split(', ')
@@ -398,11 +398,11 @@ class LLMPipelineWizard:
             uuid=pipeline_uuid,
             repo_path=project_path or get_repo_path(),
         )
-        async_block_docs = []
-        for block in pipeline.blocks_by_uuid.values():
-            if block.type in NON_PIPELINE_EXECUTABLE_BLOCK_TYPES:
-                continue
-            async_block_docs.append(self.__async_generate_doc_for_block(block))
+        async_block_docs = [
+            self.__async_generate_doc_for_block(block)
+            for block in pipeline.blocks_by_uuid.values()
+            if block.type not in NON_PIPELINE_EXECUTABLE_BLOCK_TYPES
+        ]
         block_docs = await asyncio.gather(*async_block_docs)
         block_docs_content = '\n'.join(block_docs)
         if print_block_doc:

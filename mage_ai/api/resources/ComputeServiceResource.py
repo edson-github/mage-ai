@@ -5,31 +5,31 @@ from mage_ai.services.compute.models import ComputeService
 
 class ComputeServiceResource(GenericResource):
     @classmethod
-    async def collection(self, _query, _meta, user, **kwargs):
-        resource = await self.member(None, user, **kwargs)
+    async def collection(cls, _query, _meta, user, **kwargs):
+        resource = await cls.member(None, user, **kwargs)
 
-        return self.build_result_set(
+        return cls.build_result_set(
             [
                 resource.model,
             ],
             user,
-            **kwargs,
+            **kwargs
         )
 
     @classmethod
-    def get_model(self, _pk):
+    def get_model(cls, _pk):
         return ComputeService.build(Project())
 
     @classmethod
-    async def member(self, pk, user, **kwargs):
+    async def member(cls, pk, user, **kwargs):
         query_arg = kwargs.get('query', {})
 
         with_clusters = query_arg.get('with_clusters', [False])
         if with_clusters:
             with_clusters = with_clusters[0]
 
-        compute_service = self.get_model(pk)
+        compute_service = cls.get_model(pk)
         if with_clusters:
             compute_service.with_clusters = with_clusters
 
-        return self(compute_service, user, **kwargs)
+        return cls(compute_service, user, **kwargs)

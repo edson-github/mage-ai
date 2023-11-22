@@ -9,8 +9,7 @@ from mage_ai.orchestration.constants import Entity
 class WidgetPolicy(BasePolicy):
     @property
     def entity(self):
-        parent_model = self.options.get('parent_model')
-        if parent_model:
+        if parent_model := self.options.get('parent_model'):
             return Entity.PIPELINE, parent_model.uuid
 
         return Entity.PROJECT, get_project_uuid()

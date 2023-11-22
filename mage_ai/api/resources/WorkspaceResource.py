@@ -23,20 +23,17 @@ logger = Logger().new_server_logger(__name__)
 class WorkspaceResource(GenericResource):
     @classmethod
     @safe_db_query
-    def collection(self, query_arg, meta, user, **kwargs):
-        cluster_type = self.verify_project()
+    def collection(cls, query_arg, meta, user, **kwargs):
+        cluster_type = cls.verify_project()
         if not cluster_type:
             cluster_type = query_arg.get('cluster_type', [None])
             if cluster_type:
                 cluster_type = cluster_type[0]
 
         user_id = query_arg.get('user_id', [None])
-        query_user = None
         if user_id:
             user_id = user_id[0]
-            if user_id:
-                query_user = User.query.get(user_id)
-
+        query_user = User.query.get(user_id) if user_id else None
         instances = get_instances(cluster_type)
         instance_map = {instance.get('name'): instance for instance in instances}
 
@@ -57,12 +54,12 @@ class WorkspaceResource(GenericResource):
             if workspace.name in instance_map
         ]
 
-        return self.build_result_set(result_set, user, **kwargs)
+        return cls.build_result_set(result_set, user, **kwargs)
 
     @classmethod
     @safe_db_query
-    def member(self, pk, user, **kwargs):
-        cluster_type = self.verify_project(pk)
+    def member(cls, pk, user, **kwargs):
+        cluster_type = cls.verify_project(pk)
         if not cluster_type:
             query = kwargs.get('query', {})
             cluster_type = query.get('cluster_type')[0]
@@ -72,19 +69,19 @@ class WorkspaceResource(GenericResource):
 
         workspace = Workspace.get_workspace(cluster_type, pk)
 
-        return self(
+        return cls(
             dict(
                 workspace=workspace,
                 instance=instance_map[pk],
             ),
             user,
-            **kwargs,
+            **kwargs
         )
 
     @classmethod
     @safe_db_query
-    def create(self, payload, user, **kwargs):
-        cluster_type = self.verify_project()
+    def create(cls, payload, user, **kwargs):
+        cluster_type = cls.verify_project()
         if not cluster_type:
             cluster_type = payload.pop('cluster_type')
 
@@ -104,7 +101,7 @@ class WorkspaceResource(GenericResource):
             error.update(message=str(ex))
             raise ApiError(error)
 
-        return self(dict(success=True), user, **kwargs)
+        return cls(dict(success=True), user, **kwargs)
 
     def update(self, payload, **kwargs):
         workspace = self.model.get('workspace')
@@ -138,7 +135,7 @@ class WorkspaceResource(GenericResource):
         return self
 
     @classmethod
-    def verify_project(self, subproject: str = None) -> str:
+    def verify_project(cls, subproject: str = None) -> str:
         project_type = get_project_type()
         if project_type != ProjectType.MAIN and os.getenv(MANAGE_ENV_VAR) != '1':
             error = ApiError.RESOURCE_ERROR.copy()

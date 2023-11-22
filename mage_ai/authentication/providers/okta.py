@@ -52,10 +52,7 @@ class OktaProvider(SsoProvider, OauthProvider):
             scope='openid email profile',
             state=uuid.uuid4().hex,
         )
-        query_strings = []
-        for k, v in query.items():
-            query_strings.append(f'{k}={v}')
-
+        query_strings = [f'{k}={v}' for k, v in query.items()]
         return dict(
             url=f"{self.hostname}/oauth2/default/v1/authorize?{'&'.join(query_strings)}",
             redirect_query_params=redirect_uri_query,

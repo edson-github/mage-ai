@@ -30,8 +30,9 @@ def get_oauth_client_id(provider: str) -> str:
 def get_access_token_for_user(user: User, provider: str = None) -> Oauth2AccessToken:
     if not provider:
         provider = OAUTH_PROVIDER_GHE if get_ghe_hostname() else OAUTH_PROVIDER_GITHUB
-    access_tokens = access_tokens_for_client(get_oauth_client_id(provider), user=user)
-    if access_tokens:
+    if access_tokens := access_tokens_for_client(
+        get_oauth_client_id(provider), user=user
+    ):
         return access_tokens[0]
 
 
@@ -209,7 +210,7 @@ def clone(
             print(err)
         # Add old remotes since they may be deleted when cloning.
         git_manager = Git.get_manager()
-        existing_remotes = set(remote['name'] for remote in git_manager.remotes())
+        existing_remotes = {remote['name'] for remote in git_manager.remotes()}
         for remote in all_remotes:
             try:
                 if remote['name'] not in existing_remotes:
@@ -227,12 +228,11 @@ def build_authenticated_remote_url(remote_url: str, username: str, token: str) -
 
 def get_username(token: str, user: User = None) -> str:
     resp = get_user(token)
-    if resp.get('login') is None:
-        from mage_ai.data_preparation.git import Git
-        git_manager = Git.get_manager(user=user, setup_repo=False)
-        return git_manager.git_config.username
-    else:
+    if resp.get('login') is not None:
         return resp['login']
+    from mage_ai.data_preparation.git import Git
+    git_manager = Git.get_manager(user=user, setup_repo=False)
+    return git_manager.git_config.username
 
 
 def get_user(token: str) -> Dict:

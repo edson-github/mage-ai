@@ -104,7 +104,7 @@ class BaseOperation():
             metadata = results_altered['metadata']
             presented = results_altered[resource_key]
 
-            if isinstance(presented, CustomDict) or isinstance(presented, CustomList):
+            if isinstance(presented, (CustomDict, CustomList)):
                 already_validated = presented.already_validated
 
             presented_results = []
@@ -177,9 +177,11 @@ class BaseOperation():
             if presented_is_list:
                 response[response_key] = presented_results_parsed
             else:
-                response[response_key] = presented_results_parsed[0] if len(
-                    presented_results_parsed,
-                ) >= 1 else presented_results_parsed
+                response[response_key] = (
+                    presented_results_parsed[0]
+                    if presented_results_parsed
+                    else presented_results_parsed
+                )
 
             response['metadata'] = metadata
 
@@ -208,13 +210,13 @@ class BaseOperation():
                 }
         except ApiError as err:
             if err.code == 403 and \
-                    self.user and \
-                    self.user.project_access == 0 and \
-                    not self.user.roles:
+                        self.user and \
+                        self.user.project_access == 0 and \
+                        not self.user.roles:
 
                 if not REQUIRE_USER_PERMISSIONS:
                     err.message = 'You don’t have access to this project. ' + \
-                        'Please ask an admin or owner for permissions.'
+                            'Please ask an admin or owner for permissions.'
 
             results_altered = self.__run_hooks_after(
                 condition=HookCondition.FAILURE,
@@ -250,9 +252,9 @@ class BaseOperation():
                     except (UnicodeDecodeError, AttributeError):
                         pass
 
-                    if 'true' == v:
+                    if v == 'true':
                         v = True
-                    elif 'false' == v:
+                    elif v == 'false':
                         v = False
 
                     arr.append(v)
@@ -621,9 +623,10 @@ class BaseOperation():
         try:
             return getattr(
                 importlib.import_module(
-                    'mage_ai.api.monitors.{}Monitor'.format(
-                        self.__classified_class())), '{}Monitor'.format(
-                    self.__classified_class()), )
+                    f'mage_ai.api.monitors.{self.__classified_class()}Monitor'
+                ),
+                f'{self.__classified_class()}Monitor',
+            )
         except ModuleNotFoundError:
             return BaseMonitor
 
@@ -640,31 +643,35 @@ class BaseOperation():
     def __policy_class(self):
         return getattr(
             importlib.import_module(
-                'mage_ai.api.policies.{}Policy'.format(
-                    self.__classified_class())), '{}Policy'.format(
-                self.__classified_class()), )
+                f'mage_ai.api.policies.{self.__classified_class()}Policy'
+            ),
+            f'{self.__classified_class()}Policy',
+        )
 
     def __presenter_class(self):
         return getattr(
             importlib.import_module(
-                'mage_ai.api.presenters.{}Presenter'.format(
-                    self.__classified_class())), '{}Presenter'.format(
-                self.__classified_class()), )
+                f'mage_ai.api.presenters.{self.__classified_class()}Presenter'
+            ),
+            f'{self.__classified_class()}Presenter',
+        )
 
     def __resource_class(self):
         return getattr(
             importlib.import_module(
-                'mage_ai.api.resources.{}Resource'.format(
-                    self.__classified_class())), '{}Resource'.format(
-                self.__classified_class()), )
+                f'mage_ai.api.resources.{self.__classified_class()}Resource'
+            ),
+            f'{self.__classified_class()}Resource',
+        )
 
     async def __parent_model(self):
         if self.resource_parent and self.resource_parent_id:
             parent_class = classify(singularize(self.resource_parent))
             parent_resource_class = getattr(
                 importlib.import_module(
-                    'mage_ai.api.resources.{}Resource'.format(parent_class)),
-                '{}Resource'.format(parent_class),
+                    f'mage_ai.api.resources.{parent_class}Resource'
+                ),
+                f'{parent_class}Resource',
             )
             try:
                 model = parent_resource_class.get_model(self.resource_parent_id)

@@ -31,7 +31,7 @@ class Preferences:
     ):
         self.repo_path = repo_path or get_repo_path()
         self.preferences_file_path = \
-            os.path.join(self.repo_path, PREFERENCES_FILE)
+                os.path.join(self.repo_path, PREFERENCES_FILE)
         self.user = user
         project_preferences = dict()
         try:
@@ -44,8 +44,6 @@ class Preferences:
                     project_preferences = yaml.full_load(f.read()) or {}
         except Exception:
             traceback.print_exc()
-            pass
-
         # Git settings
         env_sync_config = dict()
         if os.getenv(GIT_REPO_LINK_VAR):
@@ -89,11 +87,10 @@ class Preferences:
 
 def get_preferences(repo_path=None, user: User = None) -> Preferences:
     default_preferences = Preferences(repo_path=repo_path)
-    if user:
-        if user.preferences is None \
-                and os.path.exists(default_preferences.preferences_file_path):
-            return default_preferences
-        else:
-            return Preferences(user=user)
-    else:
+    if not user:
         return default_preferences
+    if user.preferences is None \
+            and os.path.exists(default_preferences.preferences_file_path):
+        return default_preferences
+    else:
+        return Preferences(user=user)

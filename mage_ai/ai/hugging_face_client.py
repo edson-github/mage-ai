@@ -105,7 +105,7 @@ class HuggingFaceClient(AIClient):
                     config['axis'] = Axis.ROW
                 else:
                     config['axis'] = Axis.COLUMN
-        if block_type == BlockType.DATA_EXPORTER or block_type == BlockType.DATA_LOADER:
+        if block_type in [BlockType.DATA_EXPORTER, BlockType.DATA_LOADER]:
             try:
                 config['data_source'] = DataSource(
                                             function_args.get(
@@ -113,12 +113,12 @@ class HuggingFaceClient(AIClient):
             except ValueError:
                 print(f'Error not valid DataSource: \
                     {function_args.get(f"Question {DataSource.__name__}")}')
-        output = {}
-        output['block_type'] = block_type
-        output['block_language'] = block_language
-        output['pipeline_type'] = pipeline_type
-        output['config'] = config
-        return output
+        return {
+            'block_type': block_type,
+            'block_language': block_language,
+            'pipeline_type': pipeline_type,
+            'config': config,
+        }
 
     async def inference_with_prompt(
             self,

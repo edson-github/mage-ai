@@ -9,7 +9,7 @@ from mage_ai.server.kernels import KernelName
 class ClusterResource(GenericResource):
     @classmethod
     @safe_db_query
-    def member(self, pk, user, **kwargs):
+    def member(cls, pk, user, **kwargs):
         clusters = []
         if ClusterType.EMR == pk and get_active_kernel_name() == KernelName.PYSPARK:
             from mage_ai.cluster_manager.aws.emr_cluster_manager import (
@@ -18,10 +18,14 @@ class ClusterResource(GenericResource):
 
             clusters = emr_cluster_manager.list_clusters()
 
-        return self(dict(
-            clusters=clusters,
-            type=pk,
-        ), user, **kwargs)
+        return cls(
+            dict(
+                clusters=clusters,
+                type=pk,
+            ),
+            user,
+            **kwargs
+        )
 
     @safe_db_query
     def update(self, payload, **kwargs):

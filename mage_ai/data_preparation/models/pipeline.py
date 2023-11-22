@@ -129,9 +129,7 @@ class Pipeline:
 
     @property
     def executor_count(self):
-        if self.type == PipelineType.STREAMING:
-            return self._executor_count
-        return 1
+        return self._executor_count if self.type == PipelineType.STREAMING else 1
 
     @property
     def variables_dir(self):
@@ -169,7 +167,7 @@ class Pipeline:
             self.widget_configs
 
     @classmethod
-    def create(self, name, pipeline_type=PipelineType.PYTHON, repo_path=None):
+    def create(cls, name, pipeline_type=PipelineType.PYTHON, repo_path=None):
         """
         1. Create a new folder for pipeline
         2. Create a new yaml file to store pipeline config
@@ -189,11 +187,10 @@ class Pipeline:
                 uuid=uuid,
                 type=format_enum(pipeline_type or PipelineType.PYTHON),
             ), fp)
-        pipeline = Pipeline(
+        return Pipeline(
             uuid,
             repo_path=repo_path,
         )
-        return pipeline
 
     @classmethod
     def duplicate(
@@ -238,7 +235,7 @@ class Pipeline:
         )
 
     @classmethod
-    def get(self, uuid, repo_path: str = None, check_if_exists: bool = False):
+    def get(cls, uuid, repo_path: str = None, check_if_exists: bool = False):
         from mage_ai.data_preparation.models.pipelines.integration_pipeline import (
             IntegrationPipeline,
         )
@@ -252,19 +249,14 @@ class Pipeline:
         ):
             return None
 
-        pipeline = self(uuid, repo_path=repo_path)
+        pipeline = cls(uuid, repo_path=repo_path)
         if PipelineType.INTEGRATION == pipeline.type:
             pipeline = IntegrationPipeline(uuid, repo_path=repo_path)
 
         return pipeline
 
     @classmethod
-    async def load_metadata(
-        self,
-        uuid: str,
-        repo_path: str = None,
-        raise_exception: bool = True,
-    ) -> Dict:
+    async def load_metadata(cls, uuid: str, repo_path: str = None, raise_exception: bool = True) -> Dict:
         """Load pipeline metadata dictionary.
 
         Args:
@@ -296,7 +288,7 @@ class Pipeline:
         return config
 
     @classmethod
-    async def get_async(self, uuid, repo_path: str = None):
+    async def get_async(cls, uuid, repo_path: str = None):
         from mage_ai.data_preparation.models.pipelines.integration_pipeline import (
             IntegrationPipeline,
         )
@@ -313,34 +305,32 @@ class Pipeline:
         async with aiofiles.open(config_path, mode='r') as f:
             config = yaml.safe_load(await f.read()) or {}
 
-        if PipelineType.INTEGRATION == config.get('type'):
-            catalog = None
-            catalog_config_path = os.path.join(
-                repo_path,
-                PIPELINES_FOLDER,
-                uuid,
-                DATA_INTEGRATION_CATALOG_FILE,
-            )
-            if os.path.exists(catalog_config_path):
-                async with aiofiles.open(catalog_config_path, mode='r') as f:
-                    try:
-                        catalog = json.loads(await f.read())
-                    except Exception as err:
-                        catalog = {}
-                        print('pipeline.get_async')
-                        print(err)
-            pipeline = IntegrationPipeline(
-                uuid,
-                catalog=catalog,
-                config=config,
-                repo_path=repo_path,
-            )
-        else:
-            pipeline = self(uuid, repo_path=repo_path, config=config)
-        return pipeline
+        if PipelineType.INTEGRATION != config.get('type'):
+            return cls(uuid, repo_path=repo_path, config=config)
+        catalog = None
+        catalog_config_path = os.path.join(
+            repo_path,
+            PIPELINES_FOLDER,
+            uuid,
+            DATA_INTEGRATION_CATALOG_FILE,
+        )
+        if os.path.exists(catalog_config_path):
+            async with aiofiles.open(catalog_config_path, mode='r') as f:
+                try:
+                    catalog = json.loads(await f.read())
+                except Exception as err:
+                    catalog = {}
+                    print('pipeline.get_async')
+                    print(err)
+        return IntegrationPipeline(
+            uuid,
+            catalog=catalog,
+            config=config,
+            repo_path=repo_path,
+        )
 
     @classmethod
-    def get_all_pipelines(self, repo_path) -> List[str]:
+    def get_all_pipelines(cls, repo_path) -> List[str]:
         pipelines_folder = os.path.join(repo_path, PIPELINES_FOLDER)
         if not os.path.exists(pipelines_folder):
             os.mkdir(pipelines_folder)
@@ -351,7 +341,7 @@ class Pipeline:
         ]
 
     @classmethod
-    def get_pipelines_by_block(self, block, repo_path=None, widget=False) -> List['Pipeline']:
+    def get_pipelines_by_block(cls, block, repo_path=None, widget=False) -> List['Pipeline']:
         repo_path = repo_path or get_repo_path()
         pipelines_folder = os.path.join(repo_path, PIPELINES_FOLDER)
         pipelines = []
@@ -367,7 +357,7 @@ class Pipeline:
         return pipelines
 
     @classmethod
-    def is_valid_pipeline(self, pipeline_path):
+    def is_valid_pipeline(cls, pipeline_path):
         return os.path.isdir(pipeline_path) and os.path.exists(
             os.path.join(pipeline_path, PIPELINE_CONFIG_FILE)
         )
@@ -404,11 +394,11 @@ class Pipeline:
         This function will schedule the block execution in topological
         order based on a block's upstream dependencies.
         """
-        root_blocks = []
-        for block in self.blocks_by_uuid.values():
-            if len(block.upstream_blocks) == 0:
-                root_blocks.append(block)
-
+        root_blocks = [
+            block
+            for block in self.blocks_by_uuid.values()
+            if len(block.upstream_blocks) == 0
+        ]
         execution_task = asyncio.create_task(
             run_blocks(
                 root_blocks,
@@ -446,17 +436,19 @@ class Pipeline:
                 global_vars=global_vars,
             )
         else:
-            root_blocks = []
-            for block in self.blocks_by_uuid.values():
-                if len(block.upstream_blocks) == 0 and block.type in [
+            root_blocks = [
+                block
+                for block in self.blocks_by_uuid.values()
+                if len(block.upstream_blocks) == 0
+                and block.type
+                in [
                     BlockType.DATA_EXPORTER,
                     BlockType.DATA_LOADER,
                     BlockType.DBT,
                     BlockType.TRANSFORMER,
                     BlockType.SENSOR,
-                ]:
-                    root_blocks.append(block)
-
+                ]
+            ]
             run_blocks_sync(
                 root_blocks,
                 analyze_outputs=analyze_outputs,

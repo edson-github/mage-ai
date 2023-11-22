@@ -12,7 +12,7 @@ class RoleResource(DatabaseResource):
 
     @classmethod
     @safe_db_query
-    def collection(self, query, meta, user, **kwargs):
+    def collection(cls, query, meta, user, **kwargs):
         from mage_ai.orchestration.db.models.oauth import Permission
 
         limit_roles = query.get('limit_roles', [None])
@@ -39,17 +39,12 @@ class RoleResource(DatabaseResource):
                     Permission.entity_id.in_(entity_ids),
                 )
             permissions = permissions_query.all()
-            roles = []
-            for permission in permissions:
-                roles.append(permission.role)
+            roles = [permission.role for permission in permissions]
             roles = list(filter(lambda x: x, roles))
         else:
             roles = Role.query.all()
 
-        access = 0
-        if user:
-            access = user.get_access(Entity.PROJECT, get_project_uuid())
-
+        access = user.get_access(Entity.PROJECT, get_project_uuid()) if user else 0
         if (access & Permission.Access.OWNER == 0) and limit_roles:
             role_access = Permission.Access.EDITOR | Permission.Access.VIEWER
             roles = list(filter(
@@ -60,11 +55,11 @@ class RoleResource(DatabaseResource):
                 roles,
             ))
 
-        return self.build_result_set(roles, user, **kwargs)
+        return cls.build_result_set(roles, user, **kwargs)
 
     @classmethod
     @safe_db_query
-    def create(self, payload, user, **kwargs):
+    def create(cls, payload, user, **kwargs):
         return super().create(merge_dict(extract(payload, [
             'name',
         ]), dict(
@@ -76,17 +71,16 @@ class RoleResource(DatabaseResource):
         permission_ids = [int(i) for i in payload.get('permission_ids') or []]
         role_permissions_mapping = index_by(lambda x: x.id, self.role_permissions or [])
 
-        permission_ids_create = []
-        permission_ids_delete = []
-
-        for permission_id in permission_ids:
-            if permission_id not in role_permissions_mapping:
-                permission_ids_create.append(permission_id)
-
-        for permission_id in role_permissions_mapping.keys():
-            if permission_id not in permission_ids:
-                permission_ids_delete.append(permission_id)
-
+        permission_ids_create = [
+            permission_id
+            for permission_id in permission_ids
+            if permission_id not in role_permissions_mapping
+        ]
+        permission_ids_delete = [
+            permission_id
+            for permission_id in role_permissions_mapping.keys()
+            if permission_id not in permission_ids
+        ]
         if permission_ids_create:
             db_connection.session.bulk_save_objects(
                 [RolePermission(
@@ -107,17 +101,16 @@ class RoleResource(DatabaseResource):
         user_ids = [int(i) for i in payload.get('user_ids') or []]
         user_role_mapping = index_by(lambda x: x.id, self.users or [])
 
-        user_ids_create = []
-        user_ids_delete = []
-
-        for permission_id in user_ids:
-            if permission_id not in user_role_mapping:
-                user_ids_create.append(permission_id)
-
-        for permission_id in user_role_mapping.keys():
-            if permission_id not in user_ids:
-                user_ids_delete.append(permission_id)
-
+        user_ids_create = [
+            permission_id
+            for permission_id in user_ids
+            if permission_id not in user_role_mapping
+        ]
+        user_ids_delete = [
+            permission_id
+            for permission_id in user_role_mapping.keys()
+            if permission_id not in user_ids
+        ]
         if user_ids_create:
             db_connection.session.bulk_save_objects(
                 [UserRole(

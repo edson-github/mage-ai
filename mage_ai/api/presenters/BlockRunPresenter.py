@@ -17,7 +17,4 @@ class BlockRunPresenter(BasePresenter):
     ]
 
     def present(self, **kwargs):
-        if isinstance(self.model, dict):
-            return self.model
-        else:
-            return self.model.to_dict()
+        return self.model if isinstance(self.model, dict) else self.model.to_dict()

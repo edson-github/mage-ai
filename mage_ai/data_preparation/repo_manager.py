@@ -67,18 +67,17 @@ class RepoConfig:
 
         from mage_ai.data_preparation.shared.utils import get_template_vars
         try:
-            if not config_dict:
-                if os.path.exists(self.metadata_path):
-                    with open(self.metadata_path) as f:
-                        config_file = Template(f.read()).render(
-                            **get_template_vars()
-                        )
-                        repo_config = yaml.full_load(config_file) or {}
-                else:
-                    repo_config = dict()
-            else:
+            if config_dict:
                 repo_config = config_dict
 
+            elif os.path.exists(self.metadata_path):
+                with open(self.metadata_path) as f:
+                    config_file = Template(f.read()).render(
+                        **get_template_vars()
+                    )
+                    repo_config = yaml.full_load(config_file) or {}
+            else:
+                repo_config = dict()
             # config_dict is passed into the RepoConfig in certain cases where the metadata
             # may not be able to be read. In these cases, we will try to get the variables_dir
             # from the config_dict. Otherwise, we will set the variables_dir with
@@ -106,7 +105,7 @@ class RepoConfig:
             # Executor configs
             self.ai_config = repo_config.get('ai_config', dict())
             self.azure_container_instance_config = \
-                repo_config.get('azure_container_instance_config')
+                    repo_config.get('azure_container_instance_config')
             self.ecs_config = repo_config.get('ecs_config')
             self.emr_config = repo_config.get('emr_config') or dict()
             self.features = repo_config.get('features', {})
@@ -126,7 +125,7 @@ class RepoConfig:
             self.s3_bucket = None
             self.s3_path_prefix = None
             if self.remote_variables_dir is not None and \
-                    self.remote_variables_dir.startswith('s3://'):
+                        self.remote_variables_dir.startswith('s3://'):
                 path_parts = self.remote_variables_dir.replace('s3://', '').split('/')
                 self.s3_bucket = path_parts.pop(0)
                 self.s3_path_prefix = '/'.join(path_parts)
@@ -136,13 +135,11 @@ class RepoConfig:
             self.variables_retention_period = repo_config.get('variables_retention_period')
         except Exception:
             traceback.print_exc()
-            pass
 
     @classmethod
-    def from_dict(self, config_dict: Dict) -> 'RepoConfig':
+    def from_dict(cls, config_dict: Dict) -> 'RepoConfig':
         repo_path = config_dict.get('repo_path')
-        repo_config = RepoConfig(repo_path=repo_path, config_dict=config_dict)
-        return repo_config
+        return RepoConfig(repo_path=repo_path, config_dict=config_dict)
 
     @property
     def metadata_path(self) -> str:
@@ -199,7 +196,7 @@ class RepoConfig:
         for key, value in kwargs.items():
             data[key] = value
 
-            if 'pipelines' == key:
+            if key == 'pipelines':
                 self.pipelines = value
             elif hasattr(self, key):
                 setattr(self, key, value)

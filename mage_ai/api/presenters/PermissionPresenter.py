@@ -22,12 +22,10 @@ class PermissionPresenter(BasePresenter):
     ]
 
     def entity_names(self, **kwargs) -> List[str]:
-        return sorted([n for n in EntityName])
+        return sorted(list(EntityName))
 
     def entity_types(self, **kwargs) -> List[str]:
-        return sorted(
-            [n for n in BlockEntityType] + [n for n in PipelineEntityType],
-        )
+        return sorted(list(BlockEntityType) + list(PipelineEntityType))
 
 
 PermissionPresenter.register_format(

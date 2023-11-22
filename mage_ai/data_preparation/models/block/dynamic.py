@@ -8,7 +8,7 @@ def all_variable_uuids(block, partition: str = None) -> List[str]:
         partition=partition,
     )
 
-    return list(set([tup[0] for tup in arr]))
+    return list({tup[0] for tup in arr})
 
 
 def all_variable_uuids_and_file_paths_for_reducing_block_output(

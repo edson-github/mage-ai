@@ -229,7 +229,7 @@ class BlockExecutor:
                     ]:
                         if key in data_integration_metadata:
                             self.block.template_runtime_configuration[key] = \
-                                data_integration_metadata.get(key)
+                                    data_integration_metadata.get(key)
 
             if not is_data_integration_controller or is_data_integration_child:
                 self.logger.info(f'Start executing block with {self.__class__.__name__}.', **tags)
@@ -284,11 +284,7 @@ class BlockExecutor:
                         )
 
                         for idx, _ in enumerate(values):
-                            if idx < len(block_metadata):
-                                metadata = block_metadata[idx].copy()
-                            else:
-                                metadata = {}
-
+                            metadata = block_metadata[idx].copy() if idx < len(block_metadata) else {}
                             dynamic_upstream_block_uuids_reduce.append(
                                 dynamic_block_uuid_func(
                                     upstream_block.uuid,
@@ -298,7 +294,7 @@ class BlockExecutor:
                                 ))
 
                 dynamic_upstream_block_uuids = dynamic_upstream_block_uuids_reduce + \
-                    dynamic_upstream_block_uuids_no_reduce
+                        dynamic_upstream_block_uuids_no_reduce
 
             conditional_result = self._execute_conditional(
                 dynamic_block_index=dynamic_block_index,
@@ -395,8 +391,8 @@ class BlockExecutor:
                     )
                 should_execute = False
             elif is_data_integration_controller and \
-                    is_data_integration_child and not \
-                    run_in_parallel:
+                        is_data_integration_child and not \
+                        run_in_parallel:
 
                 children = []
                 status_count = {}
@@ -460,13 +456,13 @@ class BlockExecutor:
 
                         # Same controller
                         if controller_block_uuid == metrics.get('controller_block_uuid') and \
-                                index - 1 == int(metrics.get('index') or 0):
+                                    index - 1 == int(metrics.get('index') or 0):
 
                             block_run_dict_previous = block_run_dict
 
                     if block_run_dict_previous:
                         should_execute = BlockRun.BlockRunStatus.COMPLETED.value == \
-                            block_run_dict_previous.get('status')
+                                block_run_dict_previous.get('status')
 
                         if not should_execute:
                             stream = data_integration_metadata.get('stream')
@@ -568,7 +564,7 @@ class BlockExecutor:
 
             if not should_finish:
                 should_finish = not is_data_integration_controller or \
-                    (is_data_integration_child and run_in_parallel)
+                        (is_data_integration_child and run_in_parallel)
 
             # Destination must complete immediately or else it’ll keep trying to
             # convert its upstream blocks’ (that aren’t sources) data to Singer Spec output.
@@ -577,8 +573,8 @@ class BlockExecutor:
             # is ingesting the data, there will be a mismatch of records.
             if not should_finish:
                 should_finish = is_data_integration_controller and \
-                    is_data_integration_child and \
-                    self.block.is_destination()
+                        is_data_integration_child and \
+                        self.block.is_destination()
 
             if should_finish:
                 self.logger.info(f'Finish executing block with {self.__class__.__name__}.', **tags)

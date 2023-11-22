@@ -34,40 +34,38 @@ class BasePresenter():
         self.resource = resource
 
     @classmethod
-    def all_attributes(self):
-        if not self.all_attributes_attr.get(self.__name__):
-            self.all_attributes_attr[self.__name__] = {}
-        return self.all_attributes_attr[self.__name__]
+    def all_attributes(cls):
+        if not cls.all_attributes_attr.get(cls.__name__):
+            cls.all_attributes_attr[cls.__name__] = {}
+        return cls.all_attributes_attr[cls.__name__]
 
     @classmethod
-    def all_formats(self):
-        if not self.all_formats_attr.get(self.__name__):
-            self.all_formats_attr[self.__name__] = {
-                'default': self.default_attributes,
-            }
-        return self.all_formats_attr[self.__name__]
+    def all_formats(cls):
+        if not cls.all_formats_attr.get(cls.__name__):
+            cls.all_formats_attr[cls.__name__] = {'default': cls.default_attributes}
+        return cls.all_formats_attr[cls.__name__]
 
     @classmethod
-    def formats(self, format_arg):
-        if format_arg and self.all_formats().get(format_arg, None) is not None:
-            return self.all_formats()[format_arg]
+    def formats(cls, format_arg):
+        if format_arg and cls.all_formats().get(format_arg, None) is not None:
+            return cls.all_formats()[format_arg]
         else:
-            return self.all_formats()['default']
+            return cls.all_formats()['default']
 
     @classmethod
-    def register_attributes(self, keys, klass_symbol_or_lambda):
+    def register_attributes(cls, keys, klass_symbol_or_lambda):
         for key in keys:
-            self.all_attributes()[key] = klass_symbol_or_lambda
+            cls.all_attributes()[key] = klass_symbol_or_lambda
 
     @classmethod
-    def register_format(self, format_arg, keys):
-        self.all_formats()[format_arg] = keys
+    def register_format(cls, format_arg, keys):
+        cls.all_formats()[format_arg] = keys
 
     @classmethod
-    def register_formats(self, formats, keys):
+    def register_formats(cls, formats, keys):
         arr = formats if isinstance(formats, list) else [formats]
         for format_arg in arr:
-            self.register_format(format_arg, keys)
+            cls.register_format(format_arg, keys)
 
     @classmethod
     async def present_resource(self, resource, user, **kwargs):
@@ -97,7 +95,7 @@ class BasePresenter():
                 arr.append(res)
 
                 already_validated = False
-                if isinstance(res, CustomDict) or isinstance(res, CustomList):
+                if isinstance(res, (CustomDict, CustomList)):
                     already_validated = res.already_validated
                 already_validated_values.append(already_validated)
 
@@ -109,20 +107,16 @@ class BasePresenter():
             return await present_lambda(resource)
 
     @classmethod
-    async def present_model(self, model, resource_class, user, **kwargs):
+    async def present_model(cls, model, resource_class, user, **kwargs):
         if model:
-            return await self.present_resource(
-                resource_class(model, user, **kwargs),
-                user,
-                **kwargs,
+            return await cls.present_resource(
+                resource_class(model, user, **kwargs), user, **kwargs
             )
 
     @classmethod
-    async def present_models(self, models, resource_class, user, **kwargs):
-        return await self.present_resource(
-            resource_class.build_result_set(models, user, **kwargs),
-            user,
-            **kwargs,
+    async def present_models(cls, models, resource_class, user, **kwargs):
+        return await cls.present_resource(
+            resource_class.build_result_set(models, user, **kwargs), user, **kwargs
         )
 
     async def prepare_present(self, **kwargs) -> Union[Any, None]:
@@ -256,8 +250,6 @@ class BasePresenter():
     def __getattr__(self, name):
         def _missing(*args, **kwargs):
             val = getattr(self.resource, name)
-            if callable(val):
-                return val(*args, **kwargs)
-            else:
-                return val
+            return val(*args, **kwargs) if callable(val) else val
+
         return _missing()
